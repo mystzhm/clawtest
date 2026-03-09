@@ -8,6 +8,10 @@ export const useQuestionStore = defineStore('question', () => {
   const comments = ref(JSON.parse(localStorage.getItem('comments') || '[]'))
   // 用户点赞/踩记录: { answerId: 'like' | 'dislike' }
   const userRatings = ref(JSON.parse(localStorage.getItem('userRatings') || '{}'))
+  
+  // 分页状态
+  const currentPage = ref(1)
+  const pageSize = ref(10)
 
   // 初始化示例数据
   if (questions.value.length === 0) {
@@ -254,6 +258,35 @@ export const useQuestionStore = defineStore('question', () => {
     return true
   }
 
+  // 计算总页数
+  const totalPages = computed(() => {
+    return Math.ceil(sortedQuestions.value.length / pageSize.value)
+  })
+
+  // 当前页的问题列表
+  const paginatedQuestions = computed(() => {
+    const start = (currentPage.value - 1) * pageSize.value
+    const end = start + pageSize.value
+    return sortedQuestions.value.slice(start, end)
+  })
+
+  function setCurrentPage(page) {
+    if (page < 1 || page > totalPages.value) return
+    currentPage.value = page
+  }
+
+  function nextPage() {
+    setCurrentPage(currentPage.value + 1)
+  }
+
+  function prevPage() {
+    setCurrentPage(currentPage.value - 1)
+  }
+
+  function resetPagination() {
+    currentPage.value = 1
+  }
+
   const sortedQuestions = computed(() => {
     return [...questions.value].sort((a, b) =>
       new Date(b.createdAt) - new Date(a.createdAt)
@@ -265,6 +298,10 @@ export const useQuestionStore = defineStore('question', () => {
     answers,
     comments,
     sortedQuestions,
+    paginatedQuestions,
+    currentPage,
+    pageSize,
+    totalPages,
     createQuestion,
     getQuestionById,
     getAnswersByQuestionId,
@@ -276,6 +313,10 @@ export const useQuestionStore = defineStore('question', () => {
     dislikeAnswer,
     getAnswerRating,
     incrementViews,
-    searchQuestions
+    searchQuestions,
+    setCurrentPage,
+    nextPage,
+    prevPage,
+    resetPagination
   }
 })

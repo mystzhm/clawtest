@@ -7,7 +7,7 @@
         <ul class="space-y-2">
           <li>
             <button
-              @click="selectedTag = null"
+              @click="handleTagClick(null)"
               :class="[
                 'text-sm w-full text-left',
                 selectedTag === null ? 'text-zhihu-blue font-medium' : 'text-gray-600 hover:text-zhihu-blue'
@@ -18,7 +18,7 @@
           </li>
           <li v-for="tag in popularTags" :key="tag">
             <button
-              @click="selectedTag = tag"
+              @click="handleTagClick(tag)"
               :class="[
                 'text-sm w-full text-left',
                 selectedTag === tag ? 'text-zhihu-blue font-medium' : 'text-gray-600 hover:text-zhihu-blue'
@@ -38,7 +38,7 @@
         <button
           v-for="tab in tabs"
           :key="tab.key"
-          @click="activeTab = tab.key"
+          @click="handleTabClick(tab.key)"
           :class="[
             'text-sm font-medium pb-2 border-b-2 transition-colors',
             activeTab === tab.key
@@ -60,15 +60,71 @@
       <template v-else>
         <div class="space-y-4">
           <QuestionCard
-            v-for="question in displayQuestions"
+            v-for="question in currentPageQuestions"
             :key="question.id"
             :question="question"
           />
         </div>
 
-        <div v-if="displayQuestions.length === 0" class="text-center text-gray-500 py-12">
+        <!-- 空状态 -->
+        <div v-if="currentPageQuestions.length === 0" class="text-center text-gray-500 py-12">
           <p v-if="selectedTag">暂无「{{ selectedTag }}」相关问题</p>
           <p v-else>暂无问题，来提出第一个问题吧！</p>
+        </div>
+
+        <!-- 分页控件 -->
+        <div v-if="totalPages > 1" class="card mt-6">
+          <div class="flex items-center justify-center space-x-2">
+            <!-- 上一页 -->
+            <button
+              @click="handlePageChange(currentPage - 1)"
+              :disabled="currentPage === 1"
+              :class="[
+                'px-3 py-1 rounded border transition-colors',
+                currentPage === 1
+                  ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              ]"
+            >
+              上一页
+            </button>
+
+            <!-- 页码 -->
+            <div class="flex items-center space-x-1">
+              <button
+                v-for="page in displayPages"
+                :key="page"
+                @click="handlePageChange(page)"
+                :class="[
+                  'px-3 py-1 rounded border transition-colors text-sm',
+                  page === currentPage
+                    ? 'bg-zhihu-blue text-white border-zhihu-blue'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                ]"
+              >
+                {{ page }}
+              </button>
+            </div>
+
+            <!-- 下一页 -->
+            <button
+              @click="handlePageChange(currentPage + 1)"
+              :disabled="currentPage === totalPages"
+              :class="[
+                'px-3 py-1 rounded border transition-colors',
+                currentPage === totalPages
+                  ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              ]"
+            >
+              下一页
+            </button>
+
+            <!-- 页码信息 -->
+            <span class="text-sm text-gray-500 ml-4">
+              {{ currentPage }} / {{ totalPages }} 页
+            </span>
+          </div>
         </div>
       </template>
     </main>
@@ -91,7 +147,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useQuestionStore } from '../stores/question'
 import QuestionCard from '../components/question/QuestionCard.vue'
 
@@ -107,14 +163,23 @@ const activeTab = ref('recommend')
 const selectedTag = ref(null)
 const popularTags = ['前端开发', '后端', '人工智能', '职场', '生活', '科技', '教育', '创业']
 
-const displayQuestions = computed(() => {
-  let questions = [...questionStore.sortedQuestions]
+// 分页状态
+const currentPage = computed(() => questionStore.currentPage)
+const totalPages = computed(() => questionStore.totalPages)
+const pageSize = computed(() => questionStore.pageSize)
+
+// 当前页的问题列表
+const currentPageQuestions = computed(() => {
+  let questions = questionStore.paginatedQuestions
   
-  // 按标签过滤
+  // 如果有标签过滤，应用过滤后再分页
   if (selectedTag.value) {
-    questions = questions.filter(q => 
+    questions = questionStore.sortedQuestions.filter(q => 
       q.tags.some(t => t.includes(selectedTag.value) || selectedTag.value.includes(t))
     )
+    const start = (currentPage.value - 1) * pageSize.value
+    const end = start + pageSize.value
+    questions = questions.slice(start, end)
   }
   
   // 按排序方式
@@ -124,7 +189,42 @@ const displayQuestions = computed(() => {
   return questions
 })
 
+// 显示的页码（简化显示，最多显示5个页码）
+const displayPages = computed(() => {
+  const pages = []
+  const max = Math.min(totalPages.value, 7) // 最多显示7个页码
+  
+  let start = Math.max(1, currentPage.value - 3)
+  let end = Math.min(start + max - 1, totalPages.value)
+  
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  
+  return pages
+})
+
 const hotQuestions = computed(() => {
   return [...questionStore.questions].sort((a, b) => b.views - a.views).slice(0, 5)
 })
+
+// 标签点击时重置分页
+function handleTagClick(tag) {
+  selectedTag.value = tag
+  questionStore.resetPagination()
+}
+
+// Tab 切换时重置分页
+function handleTabClick(tabKey) {
+  activeTab.value = tabKey
+  questionStore.resetPagination()
+}
+
+// 页码切换
+function handlePageChange(page) {
+  if (page < 1 || page > totalPages.value) return
+  questionStore.setCurrentPage(page)
+  // 滚动到顶部
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 </script>
