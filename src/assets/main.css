@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-gray-900 antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-zhihu-blue text-white px-4 py-2 rounded-full hover:bg-zhihu-blue-hover transition-colors;
+  }
+
+  .btn-outline {
+    @apply border border-zhihu-blue text-zhihu-blue px-4 py-2 rounded-full hover:bg-blue-50 transition-colors;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-sm p-4 mb-4;
+  }
+
+  .input-field {
+    @apply w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-zhihu-blue;
+  }
+}

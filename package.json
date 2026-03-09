@@ -1,0 +1,35 @@
+{
+  "name": "clawtest",
+  "version": "1.0.0",
+  "description": "知乎风格问答社区",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mystzhm/clawtest.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mystzhm/clawtest/issues"
+  },
+  "homepage": "https://github.com/mystzhm/clawtest#readme",
+  "dependencies": {
+    "@vitejs/plugin-vue": "^6.0.4",
+    "pinia": "^3.0.4",
+    "vite": "^7.3.1",
+    "vue": "^3.5.30",
+    "vue-router": "^5.0.3"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1"
+  }
+}
