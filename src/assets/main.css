@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @layer base {
   body {
@@ -24,4 +22,11 @@
   .input-field {
     @apply w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-zhihu-blue;
   }
+}
+
+@theme {
+  --color-zhihu-blue: #0084FF;
+  --color-zhihu-blue-hover: #0077E6;
+  --color-zhihu-gray: #8590A6;
+  --color-zhihu-bg: #F6F6F6;
 }
