@@ -210,6 +210,50 @@ export const useQuestionStore = defineStore('question', () => {
     )
   }
 
+  function updateQuestion(questionId, data) {
+    const question = questions.value.find(q => q.id === questionId)
+    if (!question) return false
+
+    if (data.title) {
+      question.title = escapeHtml(data.title.trim().slice(0, 100))
+    }
+    if (data.content !== undefined) {
+      question.content = escapeHtml(data.content.trim().slice(0, 5000))
+    }
+    if (data.tags !== undefined) {
+      question.tags = data.tags.split(',')
+        .map(t => escapeHtml(t.trim()))
+        .filter(Boolean)
+        .slice(0, 5)
+    }
+    question.updatedAt = new Date().toISOString()
+
+    localStorage.setItem('questions', JSON.stringify(questions.value))
+    return question
+  }
+
+  function deleteQuestion(questionId) {
+    const index = questions.value.findIndex(q => q.id === questionId)
+    if (index === -1) return false
+
+    questions.value.splice(index, 1)
+    // 同时删除相关回答
+    answers.value = answers.value.filter(a => a.questionId !== questionId)
+
+    localStorage.setItem('questions', JSON.stringify(questions.value))
+    localStorage.setItem('answers', JSON.stringify(answers.value))
+    return true
+  }
+
+  function deleteAnswer(answerId) {
+    const index = answers.value.findIndex(a => a.id === answerId)
+    if (index === -1) return false
+
+    answers.value.splice(index, 1)
+    localStorage.setItem('answers', JSON.stringify(answers.value))
+    return true
+  }
+
   const sortedQuestions = computed(() => {
     return [...questions.value].sort((a, b) =>
       new Date(b.createdAt) - new Date(a.createdAt)
@@ -225,6 +269,9 @@ export const useQuestionStore = defineStore('question', () => {
     getQuestionById,
     getAnswersByQuestionId,
     createAnswer,
+    updateQuestion,
+    deleteQuestion,
+    deleteAnswer,
     likeAnswer,
     dislikeAnswer,
     getAnswerRating,

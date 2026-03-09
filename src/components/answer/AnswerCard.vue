@@ -1,14 +1,25 @@
 <template>
   <div class="card mt-4">
-    <div class="flex items-start space-x-3 mb-3">
-      <router-link :to="`/user/${author?.id}`">
-        <img :src="author?.avatar" class="w-10 h-10 rounded-full" />
-      </router-link>
-      <div>
-        <router-link :to="`/user/${author?.id}`" class="font-medium text-gray-900 hover:text-zhihu-blue">
-          {{ author?.username }}
+    <div class="flex items-start justify-between">
+      <div class="flex items-start space-x-3 mb-3">
+        <router-link :to="`/user/${author?.id}`">
+          <img :src="author?.avatar" class="w-10 h-10 rounded-full" />
         </router-link>
-        <p class="text-xs text-gray-500">{{ formatDate(answer.createdAt) }}</p>
+        <div>
+          <router-link :to="`/user/${author?.id}`" class="font-medium text-gray-900 hover:text-zhihu-blue">
+            {{ author?.username }}
+          </router-link>
+          <p class="text-xs text-gray-500">{{ formatDate(answer.createdAt) }}</p>
+        </div>
+      </div>
+      
+      <!-- 作者操作按钮 -->
+      <div v-if="isAuthor" class="flex space-x-2">
+        <button @click="confirmDelete" class="text-gray-400 hover:text-red-500" title="删除">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -40,11 +51,23 @@
         <span>{{ answer.dislikes }}</span>
       </button>
     </div>
+
+    <!-- 删除确认弹窗 -->
+    <div v-if="showDeleteConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
+        <h3 class="text-lg font-bold text-gray-900 mb-2">确认删除</h3>
+        <p class="text-gray-600 mb-4">删除后无法恢复，确定要删除这条回答吗？</p>
+        <div class="flex justify-end space-x-3">
+          <button @click="showDeleteConfirm = false" class="btn-outline">取消</button>
+          <button @click="handleDelete" class="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600">删除</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useUserStore } from '../../stores/user'
 import { useQuestionStore } from '../../stores/question'
 
@@ -55,11 +78,18 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits(['delete'])
+
 const userStore = useUserStore()
 const questionStore = useQuestionStore()
+const showDeleteConfirm = ref(false)
 
 const author = computed(() => {
   return userStore.getUserById(props.answer.authorId)
+})
+
+const isAuthor = computed(() => {
+  return userStore.currentUser?.id === props.answer.authorId
 })
 
 const myRating = computed(() => {
@@ -72,6 +102,15 @@ function handleLike() {
 
 function handleDislike() {
   questionStore.dislikeAnswer(props.answer.id)
+}
+
+function confirmDelete() {
+  showDeleteConfirm.value = true
+}
+
+function handleDelete() {
+  showDeleteConfirm.value = false
+  emit('delete', props.answer.id)
 }
 
 function formatDate(dateStr) {
