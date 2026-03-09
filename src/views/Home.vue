@@ -73,7 +73,7 @@
         </div>
 
         <!-- 分页控件 -->
-        <div v-if="totalPages > 1" class="card mt-6">
+        <div v-if="filteredTotalPages > 1" class="card mt-6">
           <div class="flex items-center justify-center space-x-2">
             <!-- 上一页 -->
             <button
@@ -109,10 +109,10 @@
             <!-- 下一页 -->
             <button
               @click="handlePageChange(currentPage + 1)"
-              :disabled="currentPage === totalPages"
+              :disabled="currentPage === filteredTotalPages"
               :class="[
                 'px-3 py-1 rounded border transition-colors',
-                currentPage === totalPages
+                currentPage === filteredTotalPages
                   ? 'border-gray-200 text-gray-400 cursor-not-allowed'
                   : 'border-gray-300 text-gray-600 hover:bg-gray-50'
               ]"
@@ -122,7 +122,7 @@
 
             <!-- 页码信息 -->
             <span class="text-sm text-gray-500 ml-4">
-              {{ currentPage }} / {{ totalPages }} 页
+              {{ currentPage }} / {{ filteredTotalPages }} 页
             </span>
           </div>
         </div>
@@ -165,37 +165,59 @@ const popularTags = ['前端开发', '后端', '人工智能', '职场', '生活
 
 // 分页状态
 const currentPage = computed(() => questionStore.currentPage)
-const totalPages = computed(() => questionStore.totalPages)
 const pageSize = computed(() => questionStore.pageSize)
 
 // 当前页的问题列表
 const currentPageQuestions = computed(() => {
-  let questions = questionStore.paginatedQuestions
+  // 获取所有问题
+  let questions = [...questionStore.sortedQuestions]
   
-  // 如果有标签过滤，应用过滤后再分页
+  // 按标签过滤
   if (selectedTag.value) {
-    questions = questionStore.sortedQuestions.filter(q => 
+    questions = questions.filter(q => 
       q.tags.some(t => t.includes(selectedTag.value) || selectedTag.value.includes(t))
     )
-    const start = (currentPage.value - 1) * pageSize.value
-    const end = start + pageSize.value
-    questions = questions.slice(start, end)
   }
   
   // 按排序方式
   if (activeTab.value === 'hot') {
-    return questions.sort((a, b) => b.views - a.views)
+    questions = questions.sort((a, b) => b.views - a.views)
   }
-  return questions
+  
+  // 分页
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return questions.slice(start, end)
 })
 
-// 显示的页码（简化显示，最多显示5个页码）
+// 计算总页数（基于过滤后的数据）
+const filteredTotalPages = computed(() => {
+  let questions = [...questionStore.sortedQuestions]
+  
+  if (selectedTag.value) {
+    questions = questions.filter(q => 
+      q.tags.some(t => t.includes(selectedTag.value) || selectedTag.value.includes(t))
+    )
+  }
+  
+  return Math.ceil(questions.length / pageSize.value)
+})
+
+// 显示的页码（简化显示，最多显示7个页码）
 const displayPages = computed(() => {
   const pages = []
-  const max = Math.min(totalPages.value, 7) // 最多显示7个页码
+  const total = filteredTotalPages.value
+  if (total <= 1) return pages
+  
+  const max = Math.min(total, 7)
   
   let start = Math.max(1, currentPage.value - 3)
-  let end = Math.min(start + max - 1, totalPages.value)
+  let end = Math.min(start + max - 1, total)
+  
+  // 调整 start 确保显示足够的页码
+  if (end - start + 1 < max) {
+    start = Math.max(1, end - max + 1)
+  }
   
   for (let i = start; i <= end; i++) {
     pages.push(i)
@@ -222,7 +244,7 @@ function handleTabClick(tabKey) {
 
 // 页码切换
 function handlePageChange(page) {
-  if (page < 1 || page > totalPages.value) return
+  if (page < 1 || page > filteredTotalPages.value) return
   questionStore.setCurrentPage(page)
   // 滚动到顶部
   window.scrollTo({ top: 0, behavior: 'smooth' })
