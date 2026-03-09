@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { escapeHtml, truncateText } from '../utils/security'
 
 export const useQuestionStore = defineStore('question', () => {
   const questions = ref(JSON.parse(localStorage.getItem('questions') || '[]'))
@@ -80,12 +81,24 @@ export const useQuestionStore = defineStore('question', () => {
   }
 
   function createQuestion(title, content, tags) {
+    // 内容验证和清理
+    const cleanTitle = escapeHtml(title.trim().slice(0, 100))
+    const cleanContent = escapeHtml(content.trim().slice(0, 5000))
+    const cleanTags = tags.split(',')
+      .map(t => escapeHtml(t.trim()))
+      .filter(Boolean)
+      .slice(0, 5)
+
+    if (!cleanTitle || !cleanContent) {
+      throw new Error('标题和内容不能为空')
+    }
+
     const question = {
       id: Date.now().toString(),
-      title,
-      content,
+      title: cleanTitle,
+      content: cleanContent,
       authorId: getCurrentUserId(),
-      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+      tags: cleanTags,
       views: 0,
       createdAt: new Date().toISOString()
     }
@@ -104,10 +117,17 @@ export const useQuestionStore = defineStore('question', () => {
   }
 
   function createAnswer(questionId, content) {
+    // 内容验证和清理
+    const cleanContent = escapeHtml(content.trim().slice(0, 5000))
+    
+    if (!cleanContent) {
+      throw new Error('回答内容不能为空')
+    }
+
     const answer = {
       id: Date.now().toString(),
       questionId,
-      content,
+      content: cleanContent,
       authorId: getCurrentUserId(),
       likes: 0,
       dislikes: 0,

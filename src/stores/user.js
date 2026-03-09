@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { getSafeAvatarUrl } from '../utils/security'
 
 // 默认系统用户
 const SYSTEM_USER = {
@@ -44,7 +45,7 @@ export const useUserStore = defineStore('user', () => {
       username,
       email,
       password,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+      avatar: getSafeAvatarUrl(`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`),
       bio: '',
       followers: 0,
       following: 0,
