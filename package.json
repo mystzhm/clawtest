@@ -14,12 +14,11 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/mystzhm/clawtest/issues"
   },
-  "homepage": "https://github.com/mystzhm/clawtest#readme",
+  "homepage": "https://mystzhm.github.io/clawtest/",
   "dependencies": {
     "@vitejs/plugin-vue": "^6.0.4",
     "pinia": "^3.0.4",
