@@ -11,6 +11,7 @@ export function resetAllData() {
   localStorage.removeItem('userRatings')
   localStorage.removeItem('currentUser')
   localStorage.removeItem('seedDataInitialized')
+  localStorage.removeItem('followingList')
   
   console.log('数据已清除，刷新页面将重新初始化种子数据')
   

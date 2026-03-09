@@ -227,8 +227,8 @@ export function generateSeedData() {
       password: user.password,
       avatar: user.avatar,
       bio: user.bio,
-      followers: Math.floor(Math.random() * 100),
-      following: Math.floor(Math.random() * 50),
+      followers: 0,
+      following: 0,
       createdAt: new Date(2024, 0, index + 1).toISOString()
     })
   })

@@ -46,6 +46,41 @@ export const useUserStore = defineStore('user', () => {
   
   // 关注关系: { userId: [followingUserId1, followingUserId2, ...] }
   const followingList = ref(JSON.parse(localStorage.getItem('followingList') || '{}'))
+  
+  // 根据 followingList 重新计算所有用户的关注数和粉丝数
+  function syncFollowingCounts() {
+    // 重置所有用户的关注数
+    users.value.forEach(u => {
+      u.following = followingList.value[u.id]?.length || 0
+      u.followers = 0
+    })
+    
+    // 计算粉丝数
+    Object.entries(followingList.value).forEach(([userId, following]) => {
+      following.forEach(targetId => {
+        const targetUser = users.value.find(u => u.id === targetId)
+        if (targetUser) {
+          targetUser.followers++
+        }
+      })
+    })
+    
+    // 更新 currentUser
+    if (currentUser.value) {
+      const updated = users.value.find(u => u.id === currentUser.value.id)
+      if (updated) {
+        currentUser.value = updated
+      }
+    }
+    
+    localStorage.setItem('users', JSON.stringify(users.value))
+    if (currentUser.value) {
+      localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
+    }
+  }
+  
+  // 初始化时同步数据
+  syncFollowingCounts()
 
   const isLoggedIn = computed(() => !!currentUser.value)
 
