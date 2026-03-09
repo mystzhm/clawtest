@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getSafeAvatarUrl } from '../utils/security'
+import { generateSeedData } from '../data/seedData'
 
 // 默认系统用户
 const SYSTEM_USER = {
@@ -27,8 +28,21 @@ const ANONYMOUS_USER = {
 }
 
 export const useUserStore = defineStore('user', () => {
+  let storedUsers = JSON.parse(localStorage.getItem('users') || 'null')
+  
+  // 如果没有用户数据，初始化种子数据
+  if (!storedUsers || storedUsers.length === 0) {
+    const seedData = generateSeedData()
+    storedUsers = seedData.users
+    localStorage.setItem('users', JSON.stringify(storedUsers))
+    // 同时初始化问题和回答
+    localStorage.setItem('questions', JSON.stringify(seedData.questions))
+    localStorage.setItem('answers', JSON.stringify(seedData.answers))
+    localStorage.setItem('seedDataInitialized', 'true')
+  }
+  
   const currentUser = ref(JSON.parse(localStorage.getItem('currentUser') || 'null'))
-  const users = ref(JSON.parse(localStorage.getItem('users') || '[]'))
+  const users = ref(storedUsers)
 
   const isLoggedIn = computed(() => !!currentUser.value)
 
