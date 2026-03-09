@@ -5,6 +5,8 @@ export const useQuestionStore = defineStore('question', () => {
   const questions = ref(JSON.parse(localStorage.getItem('questions') || '[]'))
   const answers = ref(JSON.parse(localStorage.getItem('answers') || '[]'))
   const comments = ref(JSON.parse(localStorage.getItem('comments') || '[]'))
+  // 用户点赞/踩记录: { answerId: 'like' | 'dislike' }
+  const userRatings = ref(JSON.parse(localStorage.getItem('userRatings') || '{}'))
 
   // 初始化示例数据
   if (questions.value.length === 0) {
@@ -69,12 +71,20 @@ export const useQuestionStore = defineStore('question', () => {
     localStorage.setItem('answers', JSON.stringify(sampleAnswers))
   }
 
+  function getCurrentUserId() {
+    return JSON.parse(localStorage.getItem('currentUser'))?.id || 'anonymous'
+  }
+
+  function getRatingKey(answerId) {
+    return `${getCurrentUserId()}:${answerId}`
+  }
+
   function createQuestion(title, content, tags) {
     const question = {
       id: Date.now().toString(),
       title,
       content,
-      authorId: JSON.parse(localStorage.getItem('currentUser'))?.id || 'anonymous',
+      authorId: getCurrentUserId(),
       tags: tags.split(',').map(t => t.trim()).filter(Boolean),
       views: 0,
       createdAt: new Date().toISOString()
@@ -98,7 +108,7 @@ export const useQuestionStore = defineStore('question', () => {
       id: Date.now().toString(),
       questionId,
       content,
-      authorId: JSON.parse(localStorage.getItem('currentUser'))?.id || 'anonymous',
+      authorId: getCurrentUserId(),
       likes: 0,
       dislikes: 0,
       createdAt: new Date().toISOString()
@@ -110,18 +120,57 @@ export const useQuestionStore = defineStore('question', () => {
 
   function likeAnswer(answerId) {
     const answer = answers.value.find(a => a.id === answerId)
-    if (answer) {
+    if (!answer) return { success: false, message: '回答不存在' }
+
+    const key = getRatingKey(answerId)
+    const currentRating = userRatings.value[key]
+
+    if (currentRating === 'like') {
+      // 取消点赞
+      answer.likes--
+      delete userRatings.value[key]
+    } else {
+      // 点赞
+      if (currentRating === 'dislike') {
+        answer.dislikes--
+      }
       answer.likes++
-      localStorage.setItem('answers', JSON.stringify(answers.value))
+      userRatings.value[key] = 'like'
     }
+
+    localStorage.setItem('answers', JSON.stringify(answers.value))
+    localStorage.setItem('userRatings', JSON.stringify(userRatings.value))
+    return { success: true, rating: userRatings.value[key] }
   }
 
   function dislikeAnswer(answerId) {
     const answer = answers.value.find(a => a.id === answerId)
-    if (answer) {
+    if (!answer) return { success: false, message: '回答不存在' }
+
+    const key = getRatingKey(answerId)
+    const currentRating = userRatings.value[key]
+
+    if (currentRating === 'dislike') {
+      // 取消踩
+      answer.dislikes--
+      delete userRatings.value[key]
+    } else {
+      // 踩
+      if (currentRating === 'like') {
+        answer.likes--
+      }
       answer.dislikes++
-      localStorage.setItem('answers', JSON.stringify(answers.value))
+      userRatings.value[key] = 'dislike'
     }
+
+    localStorage.setItem('answers', JSON.stringify(answers.value))
+    localStorage.setItem('userRatings', JSON.stringify(userRatings.value))
+    return { success: true, rating: userRatings.value[key] }
+  }
+
+  function getAnswerRating(answerId) {
+    const key = getRatingKey(answerId)
+    return userRatings.value[key] || null
   }
 
   function incrementViews(questionId) {
@@ -158,6 +207,7 @@ export const useQuestionStore = defineStore('question', () => {
     createAnswer,
     likeAnswer,
     dislikeAnswer,
+    getAnswerRating,
     incrementViews,
     searchQuestions
   }

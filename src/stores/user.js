@@ -1,6 +1,30 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
+// 默认系统用户
+const SYSTEM_USER = {
+  id: 'system',
+  username: '系统管理员',
+  email: 'system@zhida.com',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=system',
+  bio: '知答社区官方账号',
+  followers: 0,
+  following: 0,
+  createdAt: '2024-01-01T00:00:00.000Z'
+}
+
+// 默认匿名用户
+const ANONYMOUS_USER = {
+  id: 'anonymous',
+  username: '匿名用户',
+  email: '',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=anonymous',
+  bio: '',
+  followers: 0,
+  following: 0,
+  createdAt: new Date().toISOString()
+}
+
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref(JSON.parse(localStorage.getItem('currentUser') || 'null'))
   const users = ref(JSON.parse(localStorage.getItem('users') || '[]'))
@@ -58,7 +82,12 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function getUserById(id) {
-    return users.value.find(u => u.id === id)
+    if (!id) return ANONYMOUS_USER
+    if (id === 'system') return SYSTEM_USER
+    if (id === 'anonymous') return ANONYMOUS_USER
+    
+    const user = users.value.find(u => u.id === id)
+    return user || ANONYMOUS_USER
   }
 
   return {

@@ -5,8 +5,27 @@
       <div class="card sticky top-20">
         <h3 class="font-bold text-gray-900 mb-3">话题分类</h3>
         <ul class="space-y-2">
+          <li>
+            <button
+              @click="selectedTag = null"
+              :class="[
+                'text-sm w-full text-left',
+                selectedTag === null ? 'text-zhihu-blue font-medium' : 'text-gray-600 hover:text-zhihu-blue'
+              ]"
+            >
+              全部
+            </button>
+          </li>
           <li v-for="tag in popularTags" :key="tag">
-            <a href="#" class="text-gray-600 hover:text-zhihu-blue text-sm">{{ tag }}</a>
+            <button
+              @click="selectedTag = tag"
+              :class="[
+                'text-sm w-full text-left',
+                selectedTag === tag ? 'text-zhihu-blue font-medium' : 'text-gray-600 hover:text-zhihu-blue'
+              ]"
+            >
+              {{ tag }}
+            </button>
           </li>
         </ul>
       </div>
@@ -31,18 +50,27 @@
         </button>
       </div>
 
-      <!-- 问题列表 -->
-      <div class="space-y-4">
-        <QuestionCard
-          v-for="question in displayQuestions"
-          :key="question.id"
-          :question="question"
-        />
+      <!-- 关注提示 -->
+      <div v-if="activeTab === 'following'" class="card text-center py-8">
+        <p class="text-gray-500 mb-4">关注功能开发中，敬请期待！</p>
+        <p class="text-sm text-gray-400">届时您可以关注感兴趣的用户，查看他们的动态</p>
       </div>
 
-      <div v-if="displayQuestions.length === 0" class="text-center text-gray-500 py-12">
-        暂无问题，来提出第一个问题吧！
-      </div>
+      <!-- 问题列表 -->
+      <template v-else>
+        <div class="space-y-4">
+          <QuestionCard
+            v-for="question in displayQuestions"
+            :key="question.id"
+            :question="question"
+          />
+        </div>
+
+        <div v-if="displayQuestions.length === 0" class="text-center text-gray-500 py-12">
+          <p v-if="selectedTag">暂无「{{ selectedTag }}」相关问题</p>
+          <p v-else>暂无问题，来提出第一个问题吧！</p>
+        </div>
+      </template>
     </main>
 
     <!-- 右侧推荐 -->
@@ -76,10 +104,20 @@ const tabs = [
 ]
 
 const activeTab = ref('recommend')
+const selectedTag = ref(null)
 const popularTags = ['前端开发', '后端', '人工智能', '职场', '生活', '科技', '教育', '创业']
 
 const displayQuestions = computed(() => {
   let questions = [...questionStore.sortedQuestions]
+  
+  // 按标签过滤
+  if (selectedTag.value) {
+    questions = questions.filter(q => 
+      q.tags.some(t => t.includes(selectedTag.value) || selectedTag.value.includes(t))
+    )
+  }
+  
+  // 按排序方式
   if (activeTab.value === 'hot') {
     return questions.sort((a, b) => b.views - a.views)
   }
