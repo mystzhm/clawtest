@@ -50,13 +50,81 @@
         </button>
       </div>
 
-      <!-- 关注提示 -->
-      <div v-if="activeTab === 'following'" class="card text-center py-8">
-        <p class="text-gray-500 mb-4">关注功能开发中，敬请期待！</p>
-        <p class="text-sm text-gray-400">届时您可以关注感兴趣的用户，查看他们的动态</p>
-      </div>
+      <!-- 关注 Tab 内容 -->
+      <template v-if="activeTab === 'following'">
+        <!-- 未登录提示 -->
+        <div v-if="!userStore.isLoggedIn" class="card text-center py-12">
+          <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <p class="text-gray-500 mb-4">登录后查看关注动态</p>
+          <router-link to="/login" class="btn-primary">去登录</router-link>
+        </div>
 
-      <!-- 问题列表 -->
+        <!-- 没有关注任何人 -->
+        <template v-else-if="followingUsers.length === 0">
+          <div class="card text-center py-8 mb-4">
+            <p class="text-gray-500 mb-2">你还没有关注任何人</p>
+            <p class="text-sm text-gray-400">关注感兴趣的用户，查看他们的最新动态</p>
+          </div>
+          
+          <!-- 推荐用户 -->
+          <h3 class="font-bold text-gray-900 mb-4">推荐关注</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-for="user in recommendedUsers" :key="user.id" class="card flex items-center space-x-4">
+              <router-link :to="`/user/${user.id}`">
+                <img :src="user.avatar" class="w-12 h-12 rounded-full" />
+              </router-link>
+              <div class="flex-1 min-w-0">
+                <router-link :to="`/user/${user.id}`" class="font-medium text-gray-900 hover:text-zhihu-blue">
+                  {{ user.username }}
+                </router-link>
+                <p class="text-sm text-gray-500 truncate">{{ user.bio }}</p>
+              </div>
+              <button
+                @click="handleFollow(user.id)"
+                class="btn-outline text-sm whitespace-nowrap"
+              >
+                关注
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <!-- 显示关注用户的问题 -->
+        <template v-else>
+          <!-- 关注的用户列表 -->
+          <div class="card mb-4">
+            <h3 class="font-medium text-gray-900 mb-3">我关注的人 ({{ followingUsers.length }})</h3>
+            <div class="flex flex-wrap gap-3">
+              <router-link
+                v-for="user in followingUsers"
+                :key="user.id"
+                :to="`/user/${user.id}`"
+                class="flex items-center space-x-2 bg-gray-50 rounded-full px-3 py-1 hover:bg-gray-100"
+              >
+                <img :src="user.avatar" class="w-6 h-6 rounded-full" />
+                <span class="text-sm text-gray-700">{{ user.username }}</span>
+              </router-link>
+            </div>
+          </div>
+
+          <!-- 关注用户的问题 -->
+          <div class="space-y-4">
+            <QuestionCard
+              v-for="question in followingQuestions"
+              :key="question.id"
+              :question="question"
+            />
+          </div>
+
+          <div v-if="followingQuestions.length === 0" class="card text-center py-12">
+            <p class="text-gray-500">你关注的人还没有发布问题</p>
+          </div>
+        </template>
+      </template>
+
+      <!-- 推荐/热门 问题列表 -->
       <template v-else>
         <div class="space-y-4">
           <QuestionCard
@@ -75,7 +143,6 @@
         <!-- 分页控件 -->
         <div v-if="filteredTotalPages > 1" class="card mt-6">
           <div class="flex items-center justify-center space-x-2">
-            <!-- 上一页 -->
             <button
               @click="handlePageChange(currentPage - 1)"
               :disabled="currentPage === 1"
@@ -89,7 +156,6 @@
               上一页
             </button>
 
-            <!-- 页码 -->
             <div class="flex items-center space-x-1">
               <button
                 v-for="page in displayPages"
@@ -106,7 +172,6 @@
               </button>
             </div>
 
-            <!-- 下一页 -->
             <button
               @click="handlePageChange(currentPage + 1)"
               :disabled="currentPage === filteredTotalPages"
@@ -120,7 +185,6 @@
               下一页
             </button>
 
-            <!-- 页码信息 -->
             <span class="text-sm text-gray-500 ml-4">
               {{ currentPage }} / {{ filteredTotalPages }} 页
             </span>
@@ -147,11 +211,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuestionStore } from '../stores/question'
+import { useUserStore } from '../stores/user'
 import QuestionCard from '../components/question/QuestionCard.vue'
 
 const questionStore = useQuestionStore()
+const userStore = useUserStore()
 
 const tabs = [
   { key: 'recommend', label: '推荐' },
@@ -167,30 +233,43 @@ const popularTags = ['前端开发', '后端', '人工智能', '职场', '生活
 const currentPage = computed(() => questionStore.currentPage)
 const pageSize = computed(() => questionStore.pageSize)
 
+// 关注的用户列表
+const followingUsers = computed(() => userStore.getFollowingUsers())
+
+// 关注用户的问题
+const followingQuestions = computed(() => {
+  const followingIds = userStore.getFollowingIds()
+  if (followingIds.length === 0) return []
+  
+  return questionStore.sortedQuestions.filter(q => followingIds.includes(q.authorId))
+})
+
+// 推荐用户（排除自己）
+const recommendedUsers = computed(() => {
+  return userStore.users
+    .filter(u => u.id !== userStore.currentUser?.id)
+    .slice(0, 6)
+})
+
 // 当前页的问题列表
 const currentPageQuestions = computed(() => {
-  // 获取所有问题
   let questions = [...questionStore.sortedQuestions]
   
-  // 按标签过滤
   if (selectedTag.value) {
     questions = questions.filter(q => 
       q.tags.some(t => t.includes(selectedTag.value) || selectedTag.value.includes(t))
     )
   }
   
-  // 按排序方式
   if (activeTab.value === 'hot') {
     questions = questions.sort((a, b) => b.views - a.views)
   }
   
-  // 分页
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
   return questions.slice(start, end)
 })
 
-// 计算总页数（基于过滤后的数据）
 const filteredTotalPages = computed(() => {
   let questions = [...questionStore.sortedQuestions]
   
@@ -203,18 +282,15 @@ const filteredTotalPages = computed(() => {
   return Math.ceil(questions.length / pageSize.value)
 })
 
-// 显示的页码（简化显示，最多显示7个页码）
 const displayPages = computed(() => {
   const pages = []
   const total = filteredTotalPages.value
   if (total <= 1) return pages
   
   const max = Math.min(total, 7)
-  
   let start = Math.max(1, currentPage.value - 3)
   let end = Math.min(start + max - 1, total)
   
-  // 调整 start 确保显示足够的页码
   if (end - start + 1 < max) {
     start = Math.max(1, end - max + 1)
   }
@@ -230,23 +306,23 @@ const hotQuestions = computed(() => {
   return [...questionStore.questions].sort((a, b) => b.views - a.views).slice(0, 5)
 })
 
-// 标签点击时重置分页
 function handleTagClick(tag) {
   selectedTag.value = tag
   questionStore.resetPagination()
 }
 
-// Tab 切换时重置分页
 function handleTabClick(tabKey) {
   activeTab.value = tabKey
   questionStore.resetPagination()
 }
 
-// 页码切换
 function handlePageChange(page) {
   if (page < 1 || page > filteredTotalPages.value) return
   questionStore.setCurrentPage(page)
-  // 滚动到顶部
   window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function handleFollow(userId) {
+  userStore.followUser(userId)
 }
 </script>

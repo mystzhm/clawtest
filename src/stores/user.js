@@ -43,6 +43,9 @@ export const useUserStore = defineStore('user', () => {
   
   const currentUser = ref(JSON.parse(localStorage.getItem('currentUser') || 'null'))
   const users = ref(storedUsers)
+  
+  // 关注关系: { userId: [followingUserId1, followingUserId2, ...] }
+  const followingList = ref(JSON.parse(localStorage.getItem('followingList') || '{}'))
 
   const isLoggedIn = computed(() => !!currentUser.value)
 
@@ -105,14 +108,111 @@ export const useUserStore = defineStore('user', () => {
     return user || ANONYMOUS_USER
   }
 
+  // 关注用户
+  function followUser(userId) {
+    if (!currentUser.value) return false
+    if (userId === currentUser.value.id) return false // 不能关注自己
+    
+    const currentUserId = currentUser.value.id
+    if (!followingList.value[currentUserId]) {
+      followingList.value[currentUserId] = []
+    }
+    
+    if (!followingList.value[currentUserId].includes(userId)) {
+      followingList.value[currentUserId].push(userId)
+      
+      // 更新关注数
+      const user = users.value.find(u => u.id === currentUserId)
+      if (user) user.following = followingList.value[currentUserId].length
+      
+      // 更新粉丝数
+      const targetUser = users.value.find(u => u.id === userId)
+      if (targetUser) {
+        targetUser.followers = Object.values(followingList.value)
+          .filter(list => list.includes(userId)).length
+      }
+      
+      saveFollowingData()
+      return true
+    }
+    return false
+  }
+
+  // 取消关注
+  function unfollowUser(userId) {
+    if (!currentUser.value) return false
+    
+    const currentUserId = currentUser.value.id
+    if (!followingList.value[currentUserId]) return false
+    
+    const index = followingList.value[currentUserId].indexOf(userId)
+    if (index > -1) {
+      followingList.value[currentUserId].splice(index, 1)
+      
+      // 更新关注数
+      const user = users.value.find(u => u.id === currentUserId)
+      if (user) user.following = followingList.value[currentUserId].length
+      
+      // 更新粉丝数
+      const targetUser = users.value.find(u => u.id === userId)
+      if (targetUser) {
+        targetUser.followers = Object.values(followingList.value)
+          .filter(list => list.includes(userId)).length
+      }
+      
+      saveFollowingData()
+      return true
+    }
+    return false
+  }
+
+  // 检查是否已关注
+  function isFollowing(userId) {
+    if (!currentUser.value) return false
+    const currentUserId = currentUser.value.id
+    return followingList.value[currentUserId]?.includes(userId) || false
+  }
+
+  // 获取关注的用户ID列表
+  function getFollowingIds() {
+    if (!currentUser.value) return []
+    return followingList.value[currentUser.value.id] || []
+  }
+
+  // 获取关注的用户列表
+  function getFollowingUsers() {
+    const ids = getFollowingIds()
+    return users.value.filter(u => ids.includes(u.id))
+  }
+
+  // 保存关注数据
+  function saveFollowingData() {
+    localStorage.setItem('followingList', JSON.stringify(followingList.value))
+    localStorage.setItem('users', JSON.stringify(users.value))
+    // 更新 currentUser
+    if (currentUser.value) {
+      const updated = users.value.find(u => u.id === currentUser.value.id)
+      if (updated) {
+        currentUser.value = updated
+        localStorage.setItem('currentUser', JSON.stringify(updated))
+      }
+    }
+  }
+
   return {
     currentUser,
     users,
     isLoggedIn,
+    followingList,
     register,
     login,
     logout,
     updateProfile,
-    getUserById
+    getUserById,
+    followUser,
+    unfollowUser,
+    isFollowing,
+    getFollowingIds,
+    getFollowingUsers
   }
 })
