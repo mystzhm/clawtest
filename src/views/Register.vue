@@ -12,6 +12,7 @@
             placeholder="请输入用户名"
             class="input-field"
             required
+            :disabled="isLoading"
           />
         </div>
 
@@ -23,10 +24,11 @@
             placeholder="请输入邮箱"
             class="input-field"
             required
+            :disabled="isLoading"
           />
         </div>
 
-        <div class="mb-6">
+        <div class="mb-4">
           <label class="block text-sm font-medium text-gray-700 mb-2">密码</label>
           <input
             v-model="password"
@@ -34,12 +36,26 @@
             placeholder="请输入密码"
             class="input-field"
             required
+            :disabled="isLoading"
+          />
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">个人简介</label>
+          <input
+            v-model="bio"
+            type="text"
+            placeholder="一句话介绍自己"
+            class="input-field"
+            :disabled="isLoading"
           />
         </div>
 
         <p v-if="error" class="text-red-500 text-sm mb-4">{{ error }}</p>
 
-        <button type="submit" class="btn-primary w-full">注册</button>
+        <button type="submit" class="btn-primary w-full" :disabled="isLoading">
+          {{ isLoading ? '注册中...' : '注册' }}
+        </button>
       </form>
 
       <p class="text-center text-sm text-gray-500 mt-6">
@@ -61,16 +77,20 @@ const userStore = useUserStore()
 const username = ref('')
 const email = ref('')
 const password = ref('')
+const bio = ref('')
 const error = ref('')
+const isLoading = ref(false)
 
-function handleRegister() {
+async function handleRegister() {
   error.value = ''
+  isLoading.value = true
   try {
-    userStore.register(username.value, email.value, password.value)
-    userStore.login(email.value, password.value)
-    router.push('/')
+    await userStore.register(username.value, email.value, password.value, bio.value)
+    router.push('/login')
   } catch (e) {
     error.value = e.message
+  } finally {
+    isLoading.value = false
   }
 }
 </script>

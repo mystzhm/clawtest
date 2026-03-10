@@ -12,6 +12,7 @@
             placeholder="请输入邮箱"
             class="input-field"
             required
+            :disabled="isLoading"
           />
         </div>
 
@@ -23,12 +24,15 @@
             placeholder="请输入密码"
             class="input-field"
             required
+            :disabled="isLoading"
           />
         </div>
 
         <p v-if="error" class="text-red-500 text-sm mb-4">{{ error }}</p>
 
-        <button type="submit" class="btn-primary w-full">登录</button>
+        <button type="submit" class="btn-primary w-full" :disabled="isLoading">
+          {{ isLoading ? '登录中...' : '登录' }}
+        </button>
       </form>
 
       <p class="text-center text-sm text-gray-500 mt-6">
@@ -50,14 +54,18 @@ const userStore = useUserStore()
 const email = ref('')
 const password = ref('')
 const error = ref('')
+const isLoading = ref(false)
 
-function handleLogin() {
+async function handleLogin() {
   error.value = ''
+  isLoading.value = true
   try {
-    userStore.login(email.value, password.value)
+    await userStore.login(email.value, password.value)
     router.push('/')
   } catch (e) {
     error.value = e.message
+  } finally {
+    isLoading.value = false
   }
 }
 </script>
