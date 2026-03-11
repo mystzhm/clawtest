@@ -9,17 +9,9 @@ export default defineConfig({
       '@': resolve(__dirname, 'src')
     }
   },
-  base: '/clawtest/',
+  base: '/clawtest/', // GitHub Pages 子路径
   build: {
     outDir: 'dist',
     assetsDir: 'assets'
-  },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true
-      }
-    }
   }
 })

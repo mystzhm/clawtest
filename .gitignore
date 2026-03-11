@@ -30,11 +30,3 @@ logs/
 dist/
 build/
 *.egg-info/
-
-# SQLite
-*.db
-*.db-shm
-*.db-wal
-
-# Environment
-.env

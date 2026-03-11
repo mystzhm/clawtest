@@ -1,205 +1,211 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { questionApi, answerApi } from '../api'
-import { useUserStore } from './user'
+import { escapeHtml, truncateText } from '../utils/security'
 
 export const useQuestionStore = defineStore('question', () => {
-  const questions = ref([])
-  const answers = ref([])
-  const userRatings = ref({}) // { answerId: 'like' | 'dislike' }
-  const isLoading = ref(false)
+  const questions = ref(JSON.parse(localStorage.getItem('questions') || '[]'))
+  const answers = ref(JSON.parse(localStorage.getItem('answers') || '[]'))
+  const comments = ref(JSON.parse(localStorage.getItem('comments') || '[]'))
+  // 用户点赞/踩记录: { answerId: 'like' | 'dislike' }
+  const userRatings = ref(JSON.parse(localStorage.getItem('userRatings') || '{}'))
   
   // 分页状态
   const currentPage = ref(1)
   const pageSize = ref(10)
-  const totalQuestions = ref(0)
 
-  const totalPages = computed(() => {
-    return Math.ceil(totalQuestions.value / pageSize.value)
-  })
-
-  const sortedQuestions = computed(() => {
-    return [...questions.value].sort((a, b) =>
-      new Date(b.created_at) - new Date(a.created_at)
-    )
-  })
-
-  const paginatedQuestions = computed(() => {
-    return sortedQuestions.value
-  })
-
-  // 初始化：加载问题数据
-  async function init() {
-    isLoading.value = true
-    try {
-      const result = await questionApi.getAll({ page: 1, pageSize: 100 })
-      questions.value = result.questions || []
-      totalQuestions.value = result.questions?.length || 0
-    } catch (error) {
-      console.error('加载问题失败:', error)
-      questions.value = []
-    } finally {
-      isLoading.value = false
-    }
+  function getCurrentUserId() {
+    return JSON.parse(localStorage.getItem('currentUser'))?.id || 'anonymous'
   }
 
-  async function createQuestion(title, content, tags, authorId) {
-    isLoading.value = true
-    try {
-      const tagArray = tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 5)
-      const question = await questionApi.create(title, content, authorId, tagArray)
-      questions.value.unshift(question)
-      return question
-    } catch (error) {
-      throw new Error(error.message || '创建问题失败')
-    } finally {
-      isLoading.value = false
-    }
+  function getRatingKey(answerId) {
+    return `${getCurrentUserId()}:${answerId}`
   }
 
-  async function getQuestionById(id) {
-    // 先从本地找
-    let question = questions.value.find(q => q.id === id)
-    if (question) {
-      // 更新浏览量
-      try {
-        const updated = await questionApi.getById(id)
-        const idx = questions.value.findIndex(q => q.id === id)
-        if (idx !== -1) {
-          questions.value[idx] = updated
-        }
-        return updated
-      } catch (error) {
-        return question
-      }
+  function createQuestion(title, content, tags) {
+    // 内容验证和清理
+    const cleanTitle = escapeHtml(title.trim().slice(0, 100))
+    const cleanContent = escapeHtml(content.trim().slice(0, 5000))
+    const cleanTags = tags.split(',')
+      .map(t => escapeHtml(t.trim()))
+      .filter(Boolean)
+      .slice(0, 5)
+
+    if (!cleanTitle || !cleanContent) {
+      throw new Error('标题和内容不能为空')
     }
+
+    const question = {
+      id: Date.now().toString(),
+      title: cleanTitle,
+      content: cleanContent,
+      authorId: getCurrentUserId(),
+      tags: cleanTags,
+      views: 0,
+      createdAt: new Date().toISOString()
+    }
+    questions.value.unshift(question)
+    localStorage.setItem('questions', JSON.stringify(questions.value))
+    return question
+  }
+
+  function getQuestionById(id) {
+    return questions.value.find(q => q.id === id)
+  }
+
+  function getAnswersByQuestionId(questionId) {
+    return answers.value.filter(a => a.questionId === questionId)
+      .sort((a, b) => b.likes - a.likes)
+  }
+
+  function createAnswer(questionId, content) {
+    // 内容验证和清理
+    const cleanContent = escapeHtml(content.trim().slice(0, 5000))
     
-    // 从服务器获取
-    try {
-      question = await questionApi.getById(id)
-      return question
-    } catch (error) {
-      return null
+    if (!cleanContent) {
+      throw new Error('回答内容不能为空')
     }
+
+    const answer = {
+      id: Date.now().toString(),
+      questionId,
+      content: cleanContent,
+      authorId: getCurrentUserId(),
+      likes: 0,
+      dislikes: 0,
+      createdAt: new Date().toISOString()
+    }
+    answers.value.push(answer)
+    localStorage.setItem('answers', JSON.stringify(answers.value))
+    return answer
   }
 
-  async function getAnswersByQuestionId(questionId) {
-    try {
-      const result = await answerApi.getByQuestion(questionId)
-      answers.value = result
-      return result
-    } catch (error) {
-      console.error('加载回答失败:', error)
-      return []
-    }
-  }
-
-  async function createAnswer(questionId, content, authorId) {
-    isLoading.value = true
-    try {
-      const answer = await answerApi.create(questionId, content, authorId)
-      answers.value.push(answer)
-      return answer
-    } catch (error) {
-      throw new Error(error.message || '创建回答失败')
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function likeAnswer(answerId, userId) {
-    try {
-      const result = await answerApi.rate(answerId, userId, 'like')
-      userRatings.value[answerId] = result.rating
-      // 更新本地回答数据
-      await refreshAnswer(answerId)
-      return { success: true, rating: result.rating }
-    } catch (error) {
-      return { success: false, message: error.message }
-    }
-  }
-
-  async function dislikeAnswer(answerId, userId) {
-    try {
-      const result = await answerApi.rate(answerId, userId, 'dislike')
-      userRatings.value[answerId] = result.rating
-      // 更新本地回答数据
-      await refreshAnswer(answerId)
-      return { success: true, rating: result.rating }
-    } catch (error) {
-      return { success: false, message: error.message }
-    }
-  }
-
-  async function refreshAnswer(answerId) {
-    // 重新加载问题的所有回答
+  function likeAnswer(answerId) {
     const answer = answers.value.find(a => a.id === answerId)
-    if (answer) {
-      await getAnswersByQuestionId(answer.question_id)
-    }
-  }
+    if (!answer) return { success: false, message: '回答不存在' }
 
-  async function getAnswerRating(answerId, userId) {
-    try {
-      const result = await answerApi.getRating(answerId, userId)
-      userRatings.value[answerId] = result.rating
-      return result.rating
-    } catch (error) {
-      return null
-    }
-  }
+    const key = getRatingKey(answerId)
+    const currentRating = userRatings.value[key]
 
-  async function searchQuestions(keyword) {
-    isLoading.value = true
-    try {
-      const result = await questionApi.search(keyword, 1, 100)
-      return result.questions || []
-    } catch (error) {
-      console.error('搜索失败:', error)
-      return []
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function updateQuestion(questionId, data) {
-    isLoading.value = true
-    try {
-      const updated = await questionApi.update(questionId, data)
-      const idx = questions.value.findIndex(q => q.id === questionId)
-      if (idx !== -1) {
-        questions.value[idx] = updated
+    if (currentRating === 'like') {
+      // 取消点赞
+      answer.likes--
+      delete userRatings.value[key]
+    } else {
+      // 点赞
+      if (currentRating === 'dislike') {
+        answer.dislikes--
       }
-      return updated
-    } catch (error) {
-      throw new Error(error.message || '更新问题失败')
-    } finally {
-      isLoading.value = false
+      answer.likes++
+      userRatings.value[key] = 'like'
+    }
+
+    localStorage.setItem('answers', JSON.stringify(answers.value))
+    localStorage.setItem('userRatings', JSON.stringify(userRatings.value))
+    return { success: true, rating: userRatings.value[key] }
+  }
+
+  function dislikeAnswer(answerId) {
+    const answer = answers.value.find(a => a.id === answerId)
+    if (!answer) return { success: false, message: '回答不存在' }
+
+    const key = getRatingKey(answerId)
+    const currentRating = userRatings.value[key]
+
+    if (currentRating === 'dislike') {
+      // 取消踩
+      answer.dislikes--
+      delete userRatings.value[key]
+    } else {
+      // 踩
+      if (currentRating === 'like') {
+        answer.likes--
+      }
+      answer.dislikes++
+      userRatings.value[key] = 'dislike'
+    }
+
+    localStorage.setItem('answers', JSON.stringify(answers.value))
+    localStorage.setItem('userRatings', JSON.stringify(userRatings.value))
+    return { success: true, rating: userRatings.value[key] }
+  }
+
+  function getAnswerRating(answerId) {
+    const key = getRatingKey(answerId)
+    return userRatings.value[key] || null
+  }
+
+  function incrementViews(questionId) {
+    const question = questions.value.find(q => q.id === questionId)
+    if (question) {
+      question.views++
+      localStorage.setItem('questions', JSON.stringify(questions.value))
     }
   }
 
-  async function deleteQuestion(questionId) {
-    try {
-      await questionApi.delete(questionId)
-      questions.value = questions.value.filter(q => q.id !== questionId)
-      answers.value = answers.value.filter(a => a.question_id !== questionId)
-      return true
-    } catch (error) {
-      console.error('删除问题失败:', error)
-      return false
-    }
+  function searchQuestions(keyword) {
+    const kw = keyword.toLowerCase()
+    return questions.value.filter(q =>
+      q.title.toLowerCase().includes(kw) ||
+      q.content.toLowerCase().includes(kw) ||
+      q.tags.some(t => t.toLowerCase().includes(kw))
+    )
   }
 
-  async function deleteAnswer(answerId) {
-    try {
-      await answerApi.delete(answerId)
-      answers.value = answers.value.filter(a => a.id !== answerId)
-      return true
-    } catch (error) {
-      console.error('删除回答失败:', error)
-      return false
+  function updateQuestion(questionId, data) {
+    const question = questions.value.find(q => q.id === questionId)
+    if (!question) return false
+
+    if (data.title) {
+      question.title = escapeHtml(data.title.trim().slice(0, 100))
     }
+    if (data.content !== undefined) {
+      question.content = escapeHtml(data.content.trim().slice(0, 5000))
+    }
+    if (data.tags !== undefined) {
+      question.tags = data.tags.split(',')
+        .map(t => escapeHtml(t.trim()))
+        .filter(Boolean)
+        .slice(0, 5)
+    }
+    question.updatedAt = new Date().toISOString()
+
+    localStorage.setItem('questions', JSON.stringify(questions.value))
+    return question
   }
+
+  function deleteQuestion(questionId) {
+    const index = questions.value.findIndex(q => q.id === questionId)
+    if (index === -1) return false
+
+    questions.value.splice(index, 1)
+    // 同时删除相关回答
+    answers.value = answers.value.filter(a => a.questionId !== questionId)
+
+    localStorage.setItem('questions', JSON.stringify(questions.value))
+    localStorage.setItem('answers', JSON.stringify(answers.value))
+    return true
+  }
+
+  function deleteAnswer(answerId) {
+    const index = answers.value.findIndex(a => a.id === answerId)
+    if (index === -1) return false
+
+    answers.value.splice(index, 1)
+    localStorage.setItem('answers', JSON.stringify(answers.value))
+    return true
+  }
+
+  // 计算总页数
+  const totalPages = computed(() => {
+    return Math.ceil(sortedQuestions.value.length / pageSize.value)
+  })
+
+  // 当前页的问题列表
+  const paginatedQuestions = computed(() => {
+    const start = (currentPage.value - 1) * pageSize.value
+    const end = start + pageSize.value
+    return sortedQuestions.value.slice(start, end)
+  })
 
   function setCurrentPage(page) {
     if (page < 1 || page > totalPages.value) return
@@ -218,27 +224,21 @@ export const useQuestionStore = defineStore('question', () => {
     currentPage.value = 1
   }
 
-  // 加载用户评分状态
-  async function loadUserRatings(userId) {
-    // 遍历当前加载的回答，获取评分状态
-    for (const answer of answers.value) {
-      if (!userRatings.value[answer.id]) {
-        await getAnswerRating(answer.id, userId)
-      }
-    }
-  }
+  const sortedQuestions = computed(() => {
+    return [...questions.value].sort((a, b) =>
+      new Date(b.createdAt) - new Date(a.createdAt)
+    )
+  })
 
   return {
     questions,
     answers,
-    userRatings,
+    comments,
     sortedQuestions,
     paginatedQuestions,
     currentPage,
     pageSize,
     totalPages,
-    isLoading,
-    init,
     createQuestion,
     getQuestionById,
     getAnswersByQuestionId,
@@ -249,11 +249,11 @@ export const useQuestionStore = defineStore('question', () => {
     likeAnswer,
     dislikeAnswer,
     getAnswerRating,
+    incrementViews,
     searchQuestions,
     setCurrentPage,
     nextPage,
     prevPage,
-    resetPagination,
-    loadUserRatings
+    resetPagination
   }
 })

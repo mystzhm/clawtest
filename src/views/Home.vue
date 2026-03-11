@@ -211,21 +211,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuestionStore } from '../stores/question'
 import { useUserStore } from '../stores/user'
 import QuestionCard from '../components/question/QuestionCard.vue'
 
 const questionStore = useQuestionStore()
 const userStore = useUserStore()
-
-onMounted(async () => {
-  // 初始化数据
-  await Promise.all([
-    userStore.init(),
-    questionStore.init()
-  ])
-})
 
 const tabs = [
   { key: 'recommend', label: '推荐' },

@@ -1,6 +1,19 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { userApi, seedApi } from '../api'
+import { getSafeAvatarUrl } from '../utils/security'
+import { generateSeedData } from '../data/seedData'
+
+// 默认系统用户
+const SYSTEM_USER = {
+  id: 'system',
+  username: '系统管理员',
+  email: 'system@zhida.com',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=system',
+  bio: '知答社区官方账号',
+  followers: 0,
+  following: 0,
+  createdAt: '2024-01-01T00:00:00.000Z'
+}
 
 // 默认匿名用户
 const ANONYMOUS_USER = {
@@ -11,183 +24,213 @@ const ANONYMOUS_USER = {
   bio: '',
   followers: 0,
   following: 0,
-  created_at: new Date().toISOString()
+  createdAt: new Date().toISOString()
 }
 
 export const useUserStore = defineStore('user', () => {
-  const currentUser = ref(null)
-  const users = ref([])
-  const followingIds = ref([])
-  const isLoading = ref(false)
+  let storedUsers = JSON.parse(localStorage.getItem('users') || 'null')
+  
+  // 如果没有用户数据，初始化种子数据
+  if (!storedUsers || storedUsers.length === 0) {
+    const seedData = generateSeedData()
+    storedUsers = seedData.users
+    localStorage.setItem('users', JSON.stringify(storedUsers))
+    // 同时初始化问题和回答
+    localStorage.setItem('questions', JSON.stringify(seedData.questions))
+    localStorage.setItem('answers', JSON.stringify(seedData.answers))
+    localStorage.setItem('seedDataInitialized', 'true')
+  }
+  
+  const currentUser = ref(JSON.parse(localStorage.getItem('currentUser') || 'null'))
+  const users = ref(storedUsers)
+  
+  // 关注关系: { userId: [followingUserId1, followingUserId2, ...] }
+  const followingList = ref(JSON.parse(localStorage.getItem('followingList') || '{}'))
+  
+  // 根据 followingList 重新计算所有用户的关注数和粉丝数
+  function syncFollowingCounts() {
+    // 重置所有用户的关注数
+    users.value.forEach(u => {
+      u.following = followingList.value[u.id]?.length || 0
+      u.followers = 0
+    })
+    
+    // 计算粉丝数
+    Object.entries(followingList.value).forEach(([userId, following]) => {
+      following.forEach(targetId => {
+        const targetUser = users.value.find(u => u.id === targetId)
+        if (targetUser) {
+          targetUser.followers++
+        }
+      })
+    })
+    
+    // 更新 currentUser
+    if (currentUser.value) {
+      const updated = users.value.find(u => u.id === currentUser.value.id)
+      if (updated) {
+        currentUser.value = updated
+      }
+    }
+    
+    localStorage.setItem('users', JSON.stringify(users.value))
+    if (currentUser.value) {
+      localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
+    }
+  }
+  
+  // 初始化时同步数据
+  syncFollowingCounts()
 
   const isLoggedIn = computed(() => !!currentUser.value)
 
-  // 初始化：加载用户数据
-  async function init() {
-    isLoading.value = true
-    try {
-      // 先尝试初始化种子数据
-      await seedApi.init(false)
-      
-      // 加载用户列表
-      users.value = await userApi.getAll()
-      
-      // 恢复登录状态（从 sessionStorage）
-      const savedUser = sessionStorage.getItem('currentUser')
-      if (savedUser) {
-        currentUser.value = JSON.parse(savedUser)
-        await loadFollowingIds()
-      }
-    } catch (error) {
-      console.error('初始化失败:', error)
-    } finally {
-      isLoading.value = false
+  function register(username, email, password) {
+    if (users.value.find(u => u.email === email)) {
+      throw new Error('邮箱已被注册')
     }
+    if (users.value.find(u => u.username === username)) {
+      throw new Error('用户名已存在')
+    }
+
+    const user = {
+      id: Date.now().toString(),
+      username,
+      email,
+      password,
+      avatar: getSafeAvatarUrl(`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`),
+      bio: '',
+      followers: 0,
+      following: 0,
+      createdAt: new Date().toISOString()
+    }
+
+    users.value.push(user)
+    localStorage.setItem('users', JSON.stringify(users.value))
+    return user
   }
 
-  // 加载当前用户的关注列表
-  async function loadFollowingIds() {
-    if (!currentUser.value) {
-      followingIds.value = []
-      return
+  function login(email, password) {
+    const user = users.value.find(u => u.email === email && u.password === password)
+    if (!user) {
+      throw new Error('邮箱或密码错误')
     }
-    try {
-      const following = await userApi.getFollowingList(currentUser.value.id)
-      followingIds.value = following.map(u => u.id)
-    } catch (error) {
-      console.error('加载关注列表失败:', error)
-      followingIds.value = []
-    }
-  }
-
-  async function register(username, email, password, bio) {
-    isLoading.value = true
-    try {
-      const user = await userApi.register(username, email, password, bio)
-      users.value.push(user)
-      return user
-    } catch (error) {
-      throw new Error(error.message || '注册失败')
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function login(email, password) {
-    isLoading.value = true
-    try {
-      const user = await userApi.login(email, password)
-      currentUser.value = user
-      sessionStorage.setItem('currentUser', JSON.stringify(user))
-      await loadFollowingIds()
-      return user
-    } catch (error) {
-      throw new Error(error.message || '登录失败')
-    } finally {
-      isLoading.value = false
-    }
+    currentUser.value = user
+    localStorage.setItem('currentUser', JSON.stringify(user))
+    return user
   }
 
   function logout() {
     currentUser.value = null
-    followingIds.value = []
-    sessionStorage.removeItem('currentUser')
+    localStorage.removeItem('currentUser')
   }
 
-  async function updateProfile(data) {
-    if (!currentUser.value) return
-    
-    isLoading.value = true
-    try {
-      const updated = await userApi.updateProfile(currentUser.value.id, data)
-      currentUser.value = updated
-      sessionStorage.setItem('currentUser', JSON.stringify(updated))
-      
-      // 更新列表中的用户
-      const idx = users.value.findIndex(u => u.id === updated.id)
-      if (idx !== -1) {
-        users.value[idx] = updated
-      }
-    } catch (error) {
-      throw new Error(error.message || '更新失败')
-    } finally {
-      isLoading.value = false
+  function updateProfile(data) {
+    Object.assign(currentUser.value, data)
+    const idx = users.value.findIndex(u => u.id === currentUser.value.id)
+    if (idx !== -1) {
+      users.value[idx] = currentUser.value
+      localStorage.setItem('users', JSON.stringify(users.value))
     }
+    localStorage.setItem('currentUser', JSON.stringify(currentUser.value))
   }
 
   function getUserById(id) {
-    if (!id || id === 'anonymous') return ANONYMOUS_USER
+    if (!id) return ANONYMOUS_USER
+    if (id === 'system') return SYSTEM_USER
+    if (id === 'anonymous') return ANONYMOUS_USER
+    
     const user = users.value.find(u => u.id === id)
     return user || ANONYMOUS_USER
   }
 
   // 关注用户
-  async function followUser(userId) {
+  function followUser(userId) {
     if (!currentUser.value) return false
-    if (userId === currentUser.value.id) return false
+    if (userId === currentUser.value.id) return false // 不能关注自己
     
-    try {
-      await userApi.follow(userId, currentUser.value.id)
-      if (!followingIds.value.includes(userId)) {
-        followingIds.value.push(userId)
-      }
-      // 重新加载用户数据以更新计数
-      users.value = await userApi.getAll()
-      const updated = users.value.find(u => u.id === currentUser.value.id)
-      if (updated) {
-        currentUser.value = updated
-        sessionStorage.setItem('currentUser', JSON.stringify(updated))
-      }
-      return true
-    } catch (error) {
-      console.error('关注失败:', error)
-      return false
+    const currentUserId = currentUser.value.id
+    if (!followingList.value[currentUserId]) {
+      followingList.value[currentUserId] = []
     }
+    
+    if (!followingList.value[currentUserId].includes(userId)) {
+      followingList.value[currentUserId].push(userId)
+      
+      // 更新关注数
+      const user = users.value.find(u => u.id === currentUserId)
+      if (user) user.following = followingList.value[currentUserId].length
+      
+      // 更新粉丝数
+      const targetUser = users.value.find(u => u.id === userId)
+      if (targetUser) {
+        targetUser.followers = Object.values(followingList.value)
+          .filter(list => list.includes(userId)).length
+      }
+      
+      saveFollowingData()
+      return true
+    }
+    return false
   }
 
   // 取消关注
-  async function unfollowUser(userId) {
+  function unfollowUser(userId) {
     if (!currentUser.value) return false
     
-    try {
-      await userApi.unfollow(userId, currentUser.value.id)
-      followingIds.value = followingIds.value.filter(id => id !== userId)
-      // 重新加载用户数据以更新计数
-      users.value = await userApi.getAll()
-      const updated = users.value.find(u => u.id === currentUser.value.id)
-      if (updated) {
-        currentUser.value = updated
-        sessionStorage.setItem('currentUser', JSON.stringify(updated))
+    const currentUserId = currentUser.value.id
+    if (!followingList.value[currentUserId]) return false
+    
+    const index = followingList.value[currentUserId].indexOf(userId)
+    if (index > -1) {
+      followingList.value[currentUserId].splice(index, 1)
+      
+      // 更新关注数
+      const user = users.value.find(u => u.id === currentUserId)
+      if (user) user.following = followingList.value[currentUserId].length
+      
+      // 更新粉丝数
+      const targetUser = users.value.find(u => u.id === userId)
+      if (targetUser) {
+        targetUser.followers = Object.values(followingList.value)
+          .filter(list => list.includes(userId)).length
       }
+      
+      saveFollowingData()
       return true
-    } catch (error) {
-      console.error('取消关注失败:', error)
-      return false
     }
+    return false
   }
 
   // 检查是否已关注
   function isFollowing(userId) {
     if (!currentUser.value) return false
-    return followingIds.value.includes(userId)
+    const currentUserId = currentUser.value.id
+    return followingList.value[currentUserId]?.includes(userId) || false
   }
 
   // 获取关注的用户ID列表
   function getFollowingIds() {
-    return followingIds.value
+    if (!currentUser.value) return []
+    return followingList.value[currentUser.value.id] || []
   }
 
   // 获取关注的用户列表
   function getFollowingUsers() {
-    return users.value.filter(u => followingIds.value.includes(u.id))
+    const ids = getFollowingIds()
+    return users.value.filter(u => ids.includes(u.id))
   }
 
-  // 重新加载数据
-  async function reloadUsers() {
-    try {
-      users.value = await userApi.getAll()
-    } catch (error) {
-      console.error('重新加载用户失败:', error)
+  // 保存关注数据
+  function saveFollowingData() {
+    localStorage.setItem('followingList', JSON.stringify(followingList.value))
+    localStorage.setItem('users', JSON.stringify(users.value))
+    // 更新 currentUser
+    if (currentUser.value) {
+      const updated = users.value.find(u => u.id === currentUser.value.id)
+      if (updated) {
+        currentUser.value = updated
+        localStorage.setItem('currentUser', JSON.stringify(updated))
+      }
     }
   }
 
@@ -195,8 +238,7 @@ export const useUserStore = defineStore('user', () => {
     currentUser,
     users,
     isLoggedIn,
-    isLoading,
-    init,
+    followingList,
     register,
     login,
     logout,
@@ -206,7 +248,6 @@ export const useUserStore = defineStore('user', () => {
     unfollowUser,
     isFollowing,
     getFollowingIds,
-    getFollowingUsers,
-    reloadUsers
+    getFollowingUsers
   }
 })

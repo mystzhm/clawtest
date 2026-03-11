@@ -12,7 +12,6 @@
             placeholder="用一句话描述你的问题"
             class="input-field"
             required
-            :disabled="isLoading"
           />
         </div>
 
@@ -24,7 +23,6 @@
             placeholder="详细描述你的问题，让回答者更好地理解..."
             class="input-field"
             required
-            :disabled="isLoading"
           ></textarea>
         </div>
 
@@ -35,21 +33,14 @@
             type="text"
             placeholder="用逗号分隔，如：前端, Vue, JavaScript"
             class="input-field"
-            :disabled="isLoading"
           />
           <p class="text-xs text-gray-500 mt-1">添加标签让问题更容易被发现</p>
         </div>
 
-        <p v-if="error" class="text-red-500 text-sm mb-4">{{ error }}</p>
-
         <div class="flex justify-end space-x-3">
           <router-link to="/" class="btn-outline">取消</router-link>
-          <button 
-            type="submit" 
-            :disabled="!title.trim() || !content.trim() || isLoading" 
-            class="btn-primary"
-          >
-            {{ isLoading ? '发布中...' : '发布问题' }}
+          <button type="submit" :disabled="!title.trim() || !content.trim()" class="btn-primary">
+            发布问题
           </button>
         </div>
       </form>
@@ -61,41 +52,23 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuestionStore } from '../stores/question'
-import { useUserStore } from '../stores/user'
 
 const router = useRouter()
 const questionStore = useQuestionStore()
-const userStore = useUserStore()
 
 const title = ref('')
 const content = ref('')
 const tags = ref('')
-const error = ref('')
-const isLoading = ref(false)
 
-async function submitQuestion() {
+function submitQuestion() {
   if (!title.value.trim() || !content.value.trim()) return
-  
-  if (!userStore.currentUser) {
-    error.value = '请先登录'
-    return
-  }
 
-  isLoading.value = true
-  error.value = ''
-  
-  try {
-    const question = await questionStore.createQuestion(
-      title.value,
-      content.value,
-      tags.value,
-      userStore.currentUser.id
-    )
-    router.push(`/question/${question.id}`)
-  } catch (e) {
-    error.value = e.message || '发布失败'
-  } finally {
-    isLoading.value = false
-  }
+  const question = questionStore.createQuestion(
+    title.value,
+    content.value,
+    tags.value
+  )
+
+  router.push(`/question/${question.id}`)
 }
 </script>

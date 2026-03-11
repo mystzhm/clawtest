@@ -93,17 +93,15 @@ const isAuthor = computed(() => {
 })
 
 const myRating = computed(() => {
-  return questionStore.userRatings[props.answer.id] || null
+  return questionStore.getAnswerRating(props.answer.id)
 })
 
-async function handleLike() {
-  if (!userStore.currentUser) return
-  await questionStore.likeAnswer(props.answer.id, userStore.currentUser.id)
+function handleLike() {
+  questionStore.likeAnswer(props.answer.id)
 }
 
-async function handleDislike() {
-  if (!userStore.currentUser) return
-  await questionStore.dislikeAnswer(props.answer.id, userStore.currentUser.id)
+function handleDislike() {
+  questionStore.dislikeAnswer(props.answer.id)
 }
 
 function confirmDelete() {

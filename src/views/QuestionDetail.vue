@@ -35,7 +35,7 @@
           />
           <div class="flex justify-end space-x-3">
             <button @click="cancelEdit" class="btn-outline">取消</button>
-            <button @click="saveEdit" :disabled="!editForm.title.trim() || isLoading" class="btn-primary">保存</button>
+            <button @click="saveEdit" :disabled="!editForm.title.trim()" class="btn-primary">保存</button>
           </div>
         </template>
 
@@ -87,7 +87,7 @@
           <p class="text-gray-600 mb-4">删除后无法恢复，确定要删除这个问题吗？</p>
           <div class="flex justify-end space-x-3">
             <button @click="showDeleteConfirm = false" class="btn-outline">取消</button>
-            <button @click="doDeleteQuestion" class="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600">删除</button>
+            <button @click="deleteQuestion" class="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600">删除</button>
           </div>
         </div>
       </div>
@@ -103,10 +103,9 @@
             rows="4"
             placeholder="写下你的回答..."
             class="input-field"
-            :disabled="isLoading"
           ></textarea>
           <div class="flex justify-end mt-3">
-            <button @click="submitAnswer" :disabled="!newAnswer.trim() || isLoading" class="btn-primary">
+            <button @click="submitAnswer" :disabled="!newAnswer.trim()" class="btn-primary">
               发布回答
             </button>
           </div>
@@ -150,7 +149,6 @@ const newAnswer = ref('')
 const notFound = ref(false)
 const isEditing = ref(false)
 const showDeleteConfirm = ref(false)
-const isLoading = ref(false)
 
 const editForm = reactive({
   title: '',
@@ -166,28 +164,21 @@ const isAuthor = computed(() => {
   return userStore.currentUser?.id === question.value?.authorId
 })
 
-onMounted(async () => {
-  await loadQuestion()
+onMounted(() => {
+  loadQuestion()
 })
 
-async function loadQuestion() {
+function loadQuestion() {
   const id = route.params.id
-  isLoading.value = true
-  try {
-    question.value = await questionStore.getQuestionById(id)
-    
-    if (!question.value) {
-      notFound.value = true
-      return
-    }
-    
-    answers.value = await questionStore.getAnswersByQuestionId(id)
-  } catch (error) {
-    console.error('加载问题失败:', error)
+  question.value = questionStore.getQuestionById(id)
+  
+  if (!question.value) {
     notFound.value = true
-  } finally {
-    isLoading.value = false
+    return
   }
+  
+  questionStore.incrementViews(id)
+  answers.value = questionStore.getAnswersByQuestionId(id)
 }
 
 function startEdit() {
@@ -201,59 +192,38 @@ function cancelEdit() {
   isEditing.value = false
 }
 
-async function saveEdit() {
+function saveEdit() {
   if (!editForm.title.trim()) return
   
-  isLoading.value = true
-  try {
-    await questionStore.updateQuestion(question.value.id, {
-      title: editForm.title,
-      content: editForm.content,
-      tags: editForm.tags
-    })
-    
-    question.value = await questionStore.getQuestionById(question.value.id)
-    isEditing.value = false
-  } catch (error) {
-    console.error('更新问题失败:', error)
-  } finally {
-    isLoading.value = false
-  }
+  questionStore.updateQuestion(question.value.id, {
+    title: editForm.title,
+    content: editForm.content,
+    tags: editForm.tags
+  })
+  
+  question.value = questionStore.getQuestionById(question.value.id)
+  isEditing.value = false
 }
 
 function confirmDelete() {
   showDeleteConfirm.value = true
 }
 
-async function doDeleteQuestion() {
-  isLoading.value = true
-  try {
-    await questionStore.deleteQuestion(question.value.id)
-    router.push('/')
-  } catch (error) {
-    console.error('删除问题失败:', error)
-  } finally {
-    isLoading.value = false
-  }
+function deleteQuestion() {
+  questionStore.deleteQuestion(question.value.id)
+  router.push('/')
 }
 
-async function deleteAnswer(answerId) {
-  await questionStore.deleteAnswer(answerId)
-  answers.value = await questionStore.getAnswersByQuestionId(question.value.id)
+function deleteAnswer(answerId) {
+  questionStore.deleteAnswer(answerId)
+  answers.value = questionStore.getAnswersByQuestionId(question.value.id)
 }
 
-async function submitAnswer() {
+function submitAnswer() {
   if (!newAnswer.value.trim()) return
-  isLoading.value = true
-  try {
-    await questionStore.createAnswer(question.value.id, newAnswer.value, userStore.currentUser.id)
-    newAnswer.value = ''
-    answers.value = await questionStore.getAnswersByQuestionId(question.value.id)
-  } catch (error) {
-    console.error('发布回答失败:', error)
-  } finally {
-    isLoading.value = false
-  }
+  questionStore.createAnswer(question.value.id, newAnswer.value)
+  newAnswer.value = ''
+  answers.value = questionStore.getAnswersByQuestionId(question.value.id)
 }
 
 function formatDate(dateStr) {
