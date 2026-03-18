@@ -43,6 +43,11 @@ const routes = [
     name: 'Notifications',
     component: () => import('../views/Notifications.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/hot',
+    name: 'HotList',
+    component: () => import('../views/HotList.vue')
   }
 ]
 

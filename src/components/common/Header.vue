@@ -12,8 +12,8 @@
       <!-- Nav -->
       <nav class="hidden md:flex items-center space-x-6">
         <router-link to="/" class="text-gray-600 hover:text-zhihu-blue">首页</router-link>
+        <router-link to="/hot" class="text-gray-600 hover:text-zhihu-blue">热榜</router-link>
         <router-link to="/?tab=following" class="text-gray-600 hover:text-zhihu-blue">关注</router-link>
-        <router-link to="/?tab=hot" class="text-gray-600 hover:text-zhihu-blue">热门</router-link>
       </nav>
 
       <!-- Search -->
