@@ -54,6 +54,33 @@ const routes = [
     name: 'Favorites',
     component: () => import('../views/Favorites.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/columns',
+    name: 'Columns',
+    component: () => import('../views/Columns.vue')
+  },
+  {
+    path: '/column/:id',
+    name: 'ColumnDetail',
+    component: () => import('../views/ColumnDetail.vue')
+  },
+  {
+    path: '/write',
+    name: 'WriteArticle',
+    component: () => import('../views/WriteArticle.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/write/:id',
+    name: 'EditArticle',
+    component: () => import('../views/WriteArticle.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/article/:id',
+    name: 'ArticleDetail',
+    component: () => import('../views/ArticleDetail.vue')
   }
 ]
 
