@@ -115,6 +115,23 @@ const routes = [
     name: 'Stats',
     component: () => import('../views/Stats.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/thoughts',
+    name: 'Thoughts',
+    component: () => import('../views/Thoughts.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/thought/:id',
+    name: 'ThoughtDetail',
+    component: () => import('../views/ThoughtDetail.vue')
+  },
+  {
+    path: '/publish-thought',
+    name: 'PublishThought',
+    component: () => import('../views/PublishThought.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
