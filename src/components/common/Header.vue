@@ -41,6 +41,12 @@
         </router-link>
         <!-- 通知铃铛 -->
         <NotificationBell v-if="userStore.isLoggedIn" />
+        <!-- 收藏夹 -->
+        <router-link v-if="userStore.isLoggedIn" to="/favorites" class="text-gray-500 hover:text-zhihu-blue" title="收藏夹">
+          <svg class="w-6 h-6" :class="{ 'text-yellow-500': hasFavorites }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+        </router-link>
         <template v-if="userStore.isLoggedIn">
           <router-link :to="`/user/${userStore.currentUser.id}`" class="flex items-center space-x-2">
             <img :src="userStore.currentUser.avatar" class="w-8 h-8 rounded-full" />

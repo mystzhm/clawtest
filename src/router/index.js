@@ -48,6 +48,12 @@ const routes = [
     path: '/hot',
     name: 'HotList',
     component: () => import('../views/HotList.vue')
+  },
+  {
+    path: '/favorites',
+    name: 'Favorites',
+    component: () => import('../views/Favorites.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
