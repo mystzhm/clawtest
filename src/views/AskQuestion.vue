@@ -1,11 +1,11 @@
 <template>
   <div class="max-w-3xl mx-auto">
     <div class="card">
-      <h2 class="text-xl font-bold text-gray-900 mb-6">提出问题</h2>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">提出问题</h2>
 
       <form @submit.prevent="submitQuestion">
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">问题标题</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">问题标题</label>
           <input
             v-model="title"
             type="text"
@@ -16,18 +16,17 @@
         </div>
 
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">问题描述</label>
-          <textarea
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">问题描述</label>
+          <MarkdownEditor
             v-model="content"
-            rows="6"
-            placeholder="详细描述你的问题，让回答者更好地理解..."
-            class="input-field"
-            required
-          ></textarea>
+            placeholder="详细描述你的问题，让回答者更好地理解...支持 Markdown 语法"
+            draft-key="ask-question"
+            @submit="submitQuestion"
+          />
         </div>
 
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2">话题标签</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">话题标签</label>
           <input
             v-model="tags"
             type="text"
@@ -52,6 +51,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuestionStore } from '../stores/question'
+import MarkdownEditor from '../components/editor/MarkdownEditor.vue'
 
 const router = useRouter()
 const questionStore = useQuestionStore()
