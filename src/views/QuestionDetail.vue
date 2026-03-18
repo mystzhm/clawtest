@@ -81,6 +81,14 @@
               {{ tag }}
             </span>
           </div>
+
+          <!-- 邀请回答按钮 -->
+          <div v-if="userStore.isLoggedIn" class="mt-4 pt-4 border-t border-gray-100">
+            <InviteButton
+              :question-id="question.id"
+              :question-title="question.title"
+            />
+          </div>
         </template>
       </div>
 
@@ -142,6 +150,7 @@ import { useQuestionStore } from '../stores/question'
 import { useUserStore } from '../stores/user'
 import AnswerCard from '../components/answer/AnswerCard.vue'
 import ShareButton from '../components/share/ShareButton.vue'
+import InviteButton from '../components/invite/InviteButton.vue'
 
 const route = useRoute()
 const router = useRouter()
