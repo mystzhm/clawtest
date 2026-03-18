@@ -109,19 +109,47 @@ export const useUserStore = defineStore('user', () => {
     return user
   }
 
-  function login(email, password) {
+  function login(email, password, rememberMe = false) {
     const user = users.value.find(u => u.email === email && u.password === password)
     if (!user) {
       throw new Error('邮箱或密码错误')
     }
     currentUser.value = user
-    localStorage.setItem('currentUser', JSON.stringify(user))
+    
+    if (rememberMe) {
+      // 记住登录状态 7 天
+      const expireAt = Date.now() + 7 * 24 * 60 * 60 * 1000
+      localStorage.setItem('currentUser', JSON.stringify(user))
+      localStorage.setItem('rememberMe', JSON.stringify({ userId: user.id, expireAt }))
+    } else {
+      localStorage.setItem('currentUser', JSON.stringify(user))
+      localStorage.removeItem('rememberMe')
+    }
+    
     return user
+  }
+
+  function checkRememberMe() {
+    const rememberMeData = JSON.parse(localStorage.getItem('rememberMe') || 'null')
+    if (rememberMeData && rememberMeData.expireAt > Date.now()) {
+      // 还在有效期内
+      const user = users.value.find(u => u.id === rememberMeData.userId)
+      if (user) {
+        currentUser.value = user
+        localStorage.setItem('currentUser', JSON.stringify(user))
+        return true
+      }
+    } else if (rememberMeData) {
+      // 已过期，清除
+      localStorage.removeItem('rememberMe')
+    }
+    return false
   }
 
   function logout() {
     currentUser.value = null
     localStorage.removeItem('currentUser')
+    localStorage.removeItem('rememberMe')
   }
 
   function updateProfile(data) {
@@ -264,6 +292,7 @@ export const useUserStore = defineStore('user', () => {
     register,
     login,
     logout,
+    checkRememberMe,
     updateProfile,
     getUserById,
     followUser,
