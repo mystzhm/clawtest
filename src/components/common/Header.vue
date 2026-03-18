@@ -49,11 +49,40 @@
           </svg>
         </router-link>
         <template v-if="userStore.isLoggedIn">
-          <router-link :to="`/user/${userStore.currentUser.id}`" class="flex items-center space-x-2">
-            <img :src="userStore.currentUser.avatar" class="w-8 h-8 rounded-full" />
-            <span class="text-sm">{{ userStore.currentUser.username }}</span>
-          </router-link>
-          <button @click="userStore.logout()" class="text-gray-500 hover:text-red-500 text-sm">退出</button>
+          <div class="relative">
+            <button
+              @click="showUserMenu = !showUserMenu"
+              class="flex items-center space-x-2 hover:text-zhihu-blue transition-colors"
+            >
+              <img :src="userStore.currentUser.avatar" class="w-8 h-8 rounded-full" />
+              <span class="text-sm">{{ userStore.currentUser.username }}</span>
+            </button>
+
+            <!-- 用户下拉菜单 -->
+            <div v-if="showUserMenu" class="absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50 min-w-[180px]">
+              <router-link
+                :to="`/user/${userStore.currentUser.id}`"
+                @click="showUserMenu = false"
+                class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                个人主页
+              </router-link>
+              <router-link
+                to="/settings"
+                @click="showUserMenu = false"
+                class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                设置
+              </router-link>
+              <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+              <button
+                @click="handleLogout"
+                class="w-full text-left px-4 py-2 text-red-500 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                退出
+              </button>
+            </div>
+          </div>
         </template>
         <template v-else>
           <router-link to="/login" class="text-zhihu-blue hover:text-zhihu-blue-hover">登录</router-link>
@@ -184,11 +213,18 @@ const router = useRouter()
 const userStore = useUserStore()
 const searchKeyword = ref('')
 const showMobileMenu = ref(false)
+const showUserMenu = ref(false)
 
 function handleSearch() {
   if (searchKeyword.value.trim()) {
     router.push({ path: '/search', query: { q: searchKeyword.value.trim() } })
     showMobileMenu.value = false
   }
+}
+
+function handleLogout() {
+  userStore.logout()
+  showUserMenu.value = false
+  router.push('/')
 }
 </script>
