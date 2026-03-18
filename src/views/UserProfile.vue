@@ -47,6 +47,12 @@
             >
               关注
             </button>
+            <router-link
+              :to="`/message/${userId}`"
+              class="px-4 py-1.5 border border-gray-300 text-gray-700 rounded-full hover:bg-gray-50 transition-colors"
+            >
+              发私信
+            </router-link>
           </div>
           <div v-else class="flex items-center space-x-3 mt-4">
             <router-link
