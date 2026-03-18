@@ -4,6 +4,11 @@
   body {
     @apply text-gray-900 antialiased;
   }
+
+  /* 深色模式基础样式 */
+  .dark body {
+    @apply text-gray-100;
+  }
 }
 
 @layer components {
@@ -12,15 +17,15 @@
   }
 
   .btn-outline {
-    @apply border border-zhihu-blue text-zhihu-blue px-4 py-2 rounded-full hover:bg-blue-50 transition-colors;
+    @apply border border-zhihu-blue text-zhihu-blue px-4 py-2 rounded-full hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors;
   }
 
   .card {
-    @apply bg-white rounded-lg shadow-sm p-4 mb-4;
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-4 border border-gray-100 dark:border-gray-700;
   }
 
   .input-field {
-    @apply w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-zhihu-blue;
+    @apply w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-zhihu-blue;
   }
 }
 
@@ -29,4 +34,53 @@
   --color-zhihu-blue-hover: #0077E6;
   --color-zhihu-gray: #8590A6;
   --color-zhihu-bg: #F6F6F6;
+}
+
+/* 深色模式全局样式 */
+.dark {
+  --zhihu-bg: #1a1a1a;
+}
+
+.dark body {
+  background-color: #121212;
+}
+
+.dark .bg-gray-50 {
+  background-color: #121212 !important;
+}
+
+.dark .bg-white {
+  background-color: #1a1a1a !important;
+}
+
+.dark .text-gray-900 {
+  color: #f3f4f6 !important;
+}
+
+.dark .text-gray-700 {
+  color: #d1d5db !important;
+}
+
+.dark .text-gray-600 {
+  color: #9ca3af !important;
+}
+
+.dark .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+.dark .border-gray-100 {
+  border-color: #374151 !important;
+}
+
+.dark .border-gray-200 {
+  border-color: #374151 !important;
+}
+
+.dark .hover\:bg-gray-50:hover {
+  background-color: #1f2937 !important;
+}
+
+.dark .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
 }

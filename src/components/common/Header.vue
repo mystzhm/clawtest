@@ -39,6 +39,8 @@
         <router-link v-if="userStore.isLoggedIn" to="/ask" class="btn-primary text-sm">
           提问题
         </router-link>
+        <!-- 主题切换 -->
+        <ThemeToggle />
         <!-- 通知铃铛 -->
         <NotificationBell v-if="userStore.isLoggedIn" />
         <!-- 收藏夹 -->
@@ -68,6 +70,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../stores/user'
 import NotificationBell from '../notification/NotificationBell.vue'
+import ThemeToggle from '../theme/ThemeToggle.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
