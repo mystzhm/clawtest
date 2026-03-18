@@ -83,6 +83,16 @@ const routes = [
     component: () => import('../views/ArticleDetail.vue')
   },
   {
+    path: '/topics',
+    name: 'Topics',
+    component: () => import('../views/Topics.vue')
+  },
+  {
+    path: '/topic/:id',
+    name: 'TopicDetail',
+    component: () => import('../views/TopicDetail.vue')
+  },
+  {
     path: '/messages',
     name: 'Messages',
     component: () => import('../views/Messages.vue'),

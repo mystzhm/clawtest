@@ -13,6 +13,7 @@
       <nav class="hidden md:flex items-center space-x-6">
         <router-link to="/" class="text-gray-600 dark:text-gray-300 hover:text-zhihu-blue">首页</router-link>
         <router-link to="/hot" class="text-gray-600 dark:text-gray-300 hover:text-zhihu-blue">热榜</router-link>
+        <router-link to="/topics" class="text-gray-600 dark:text-gray-300 hover:text-zhihu-blue">话题</router-link>
         <router-link to="/columns" class="text-gray-600 dark:text-gray-300 hover:text-zhihu-blue">专栏</router-link>
         <router-link to="/?tab=following" class="text-gray-600 dark:text-gray-300 hover:text-zhihu-blue">关注</router-link>
       </nav>
