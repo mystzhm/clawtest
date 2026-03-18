@@ -97,6 +97,11 @@ export const useQuestionStore = defineStore('question', () => {
       }
       answer.likes++
       userRatings.value[key] = 'like'
+
+      // 给回答作者发送点赞通知
+      if (answer.authorId !== getCurrentUserId()) {
+        createLikeNotification(answer.authorId, getCurrentUserId(), 'answer', answer)
+      }
     }
 
     localStorage.setItem('answers', JSON.stringify(answers.value))
@@ -240,6 +245,22 @@ export const useQuestionStore = defineStore('question', () => {
     }
 
     comments.value.push(comment)
+
+    // 如果是回复用户或回复评论，给回答作者和被回复者发送通知
+    const answer = answers.value.find(a => a.id === answerId)
+    if (answer) {
+      // 给回答作者发通知（一级评论）
+      if (!replyTo && answer.authorId !== getCurrentUserId()) {
+        const question = questions.value.find(q => q.id === answer.questionId)
+        createCommentNotification(answer.authorId, getCurrentUserId(), answer, question)
+      }
+      // 给被回复的用户发通知（回复评论）
+      else if (replyToUserId && replyToUserId !== getCurrentUserId()) {
+        const question = questions.value.find(q => q.id === answer.questionId)
+        createCommentNotification(replyToUserId, getCurrentUserId(), answer, question)
+      }
+    }
+
     localStorage.setItem('comments', JSON.stringify(comments.value))
     return comment
   }
@@ -286,6 +307,31 @@ export const useQuestionStore = defineStore('question', () => {
     } else {
       comment.likes++
       userRatings.value[key] = 'like'
+
+      // 给评论作者发送点赞通知
+      if (comment.authorId !== getCurrentUserId()) {
+        const answer = answers.value.find(a => a.id === comment.answerId)
+        const question = questions.value.find(q => q.id === answer?.questionId)
+        const notifications = JSON.parse(localStorage.getItem('notifications') || '[]')
+        const users = JSON.parse(localStorage.getItem('users') || '[]')
+        const fromUser = users.find(u => u.id === getCurrentUserId())
+
+        notifications.unshift({
+          id: Date.now().toString(),
+          type: 'like',
+          userId: comment.authorId,
+          fromUserId: getCurrentUserId(),
+          fromUsername: fromUser?.username || '匿名用户',
+          fromAvatar: fromUser?.avatar || '',
+          targetType: 'comment',
+          targetId: comment.id,
+          targetTitle: question?.title || '评论',
+          targetPreview: comment.content?.slice(0, 50) || '',
+          read: false,
+          createdAt: new Date().toISOString()
+        })
+        localStorage.setItem('notifications', JSON.stringify(notifications))
+      }
     }
 
     localStorage.setItem('comments', JSON.stringify(comments.value))
@@ -302,6 +348,53 @@ export const useQuestionStore = defineStore('question', () => {
   // 获取评论数量
   function getCommentCount(answerId) {
     return comments.value.filter(c => c.answerId === answerId).length
+  }
+
+  // 创建评论通知
+  function createCommentNotification(targetUserId, fromUserId, answer, question) {
+    const users = JSON.parse(localStorage.getItem('users') || '[]')
+    const fromUser = users.find(u => u.id === fromUserId)
+
+    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]')
+    notifications.unshift({
+      id: Date.now().toString(),
+      type: 'comment',
+      userId: targetUserId,
+      fromUserId: fromUserId,
+      fromUsername: fromUser?.username || '匿名用户',
+      fromAvatar: fromUser?.avatar || '',
+      targetType: 'answer',
+      targetId: answer.id,
+      targetTitle: question?.title || '问题',
+      targetPreview: answer.content?.slice(0, 50) || '',
+      read: false,
+      createdAt: new Date().toISOString()
+    })
+    localStorage.setItem('notifications', JSON.stringify(notifications))
+  }
+
+  // 创建点赞通知
+  function createLikeNotification(targetUserId, fromUserId, targetType, target) {
+    const users = JSON.parse(localStorage.getItem('users') || '[]')
+    const fromUser = users.find(u => u.id === fromUserId)
+    const question = questions.value.find(q => q.id === target.questionId)
+
+    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]')
+    notifications.unshift({
+      id: Date.now().toString(),
+      type: 'like',
+      userId: targetUserId,
+      fromUserId: fromUserId,
+      fromUsername: fromUser?.username || '匿名用户',
+      fromAvatar: fromUser?.avatar || '',
+      targetType,
+      targetId: target.id,
+      targetTitle: question?.title || '回答',
+      targetPreview: target.content?.slice(0, 50) || '',
+      read: false,
+      createdAt: new Date().toISOString()
+    })
+    localStorage.setItem('notifications', JSON.stringify(notifications))
   }
 
   // 计算总页数

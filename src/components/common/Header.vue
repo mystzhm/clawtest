@@ -39,6 +39,8 @@
         <router-link v-if="userStore.isLoggedIn" to="/ask" class="btn-primary text-sm">
           提问题
         </router-link>
+        <!-- 通知铃铛 -->
+        <NotificationBell v-if="userStore.isLoggedIn" />
         <template v-if="userStore.isLoggedIn">
           <router-link :to="`/user/${userStore.currentUser.id}`" class="flex items-center space-x-2">
             <img :src="userStore.currentUser.avatar" class="w-8 h-8 rounded-full" />
@@ -59,6 +61,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../stores/user'
+import NotificationBell from '../notification/NotificationBell.vue'
 
 const router = useRouter()
 const userStore = useUserStore()

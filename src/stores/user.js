@@ -167,10 +167,32 @@ export const useUserStore = defineStore('user', () => {
           .filter(list => list.includes(userId)).length
       }
       
+      // 创建关注通知
+      createFollowNotification(userId, currentUser.value)
+      
       saveFollowingData()
       return true
     }
     return false
+  }
+
+  // 创建关注通知（直接操作 localStorage，避免循环依赖）
+  function createFollowNotification(targetUserId, fromUser) {
+    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]')
+    notifications.unshift({
+      id: Date.now().toString(),
+      type: 'follow',
+      userId: targetUserId,
+      fromUserId: fromUser.id,
+      fromUsername: fromUser.username,
+      fromAvatar: fromUser.avatar,
+      targetType: 'user',
+      targetId: fromUser.id,
+      targetTitle: `${fromUser.username} 关注了你`,
+      read: false,
+      createdAt: new Date().toISOString()
+    })
+    localStorage.setItem('notifications', JSON.stringify(notifications))
   }
 
   // 取消关注
