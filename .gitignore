@@ -30,3 +30,8 @@ logs/
 dist/
 build/
 *.egg-info/
+
+# SQLite database files
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal

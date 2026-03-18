@@ -52,6 +52,9 @@
       </button>
     </div>
 
+    <!-- 评论区域 -->
+    <CommentSection :answer-id="answer.id" />
+
     <!-- 删除确认弹窗 -->
     <div v-if="showDeleteConfirm" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
@@ -70,6 +73,7 @@
 import { ref, computed } from 'vue'
 import { useUserStore } from '../../stores/user'
 import { useQuestionStore } from '../../stores/question'
+import CommentSection from '../comment/CommentSection.vue'
 
 const props = defineProps({
   answer: {

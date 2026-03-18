@@ -191,8 +191,117 @@ export const useQuestionStore = defineStore('question', () => {
     if (index === -1) return false
 
     answers.value.splice(index, 1)
+    // 同时删除相关评论
+    comments.value = comments.value.filter(c => c.answerId !== answerId)
+
     localStorage.setItem('answers', JSON.stringify(answers.value))
+    localStorage.setItem('comments', JSON.stringify(comments.value))
     return true
+  }
+
+  // ========== 评论系统 ==========
+
+  // 获取回答的评论列表
+  function getCommentsByAnswerId(answerId, sortBy = 'time') {
+    const answerComments = comments.value.filter(c => c.answerId === answerId && !c.replyTo)
+    if (sortBy === 'time') {
+      answerComments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    } else {
+      // 按热度（点赞数）
+      answerComments.sort((a, b) => b.likes - a.likes)
+    }
+    return answerComments
+  }
+
+  // 获取评论的回复
+  function getRepliesByCommentId(commentId) {
+    return comments.value
+      .filter(c => c.replyTo === commentId)
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+  }
+
+  // 创建评论
+  function createComment(answerId, content, replyTo = null, replyToUserId = null) {
+    const cleanContent = escapeHtml(content.trim().slice(0, 1000))
+
+    if (!cleanContent) {
+      throw new Error('评论内容不能为空')
+    }
+
+    const comment = {
+      id: Date.now().toString(),
+      answerId,
+      content: cleanContent,
+      authorId: getCurrentUserId(),
+      replyTo, // 回复的评论ID（null 表示一级评论）
+      replyToUserId, // 回复的用户ID
+      likes: 0,
+      createdAt: new Date().toISOString()
+    }
+
+    comments.value.push(comment)
+    localStorage.setItem('comments', JSON.stringify(comments.value))
+    return comment
+  }
+
+  // 删除评论
+  function deleteComment(commentId) {
+    const index = comments.value.findIndex(c => c.id === commentId)
+    if (index === -1) return false
+
+    // 只能删除自己的评论
+    const comment = comments.value[index]
+    if (comment.authorId !== getCurrentUserId()) {
+      return false
+    }
+
+    // 删除评论及其所有回复
+    const idsToDelete = [commentId]
+    const findReplies = (parentId) => {
+      comments.value.forEach(c => {
+        if (c.replyTo === parentId && !idsToDelete.includes(c.id)) {
+          idsToDelete.push(c.id)
+          findReplies(c.id)
+        }
+      })
+    }
+    findReplies(commentId)
+
+    comments.value = comments.value.filter(c => !idsToDelete.includes(c.id))
+    localStorage.setItem('comments', JSON.stringify(comments.value))
+    return true
+  }
+
+  // 点赞评论
+  function likeComment(commentId) {
+    const comment = comments.value.find(c => c.id === commentId)
+    if (!comment) return { success: false }
+
+    const key = `comment:${getRatingKey(commentId)}`
+    const currentRating = userRatings.value[key]
+
+    if (currentRating === 'like') {
+      comment.likes--
+      delete userRatings.value[key]
+    } else {
+      comment.likes++
+      userRatings.value[key] = 'like'
+    }
+
+    localStorage.setItem('comments', JSON.stringify(comments.value))
+    localStorage.setItem('userRatings', JSON.stringify(userRatings.value))
+    return { success: true, rating: userRatings.value[key] }
+  }
+
+  // 获取评论的点赞状态
+  function getCommentRating(commentId) {
+    const key = `comment:${getRatingKey(commentId)}`
+    return userRatings.value[key] || null
+  }
+
+  // 获取评论数量
+  function getCommentCount(answerId) {
+    return comments.value.filter(c => c.answerId === answerId).length
   }
 
   // 计算总页数
@@ -254,6 +363,14 @@ export const useQuestionStore = defineStore('question', () => {
     setCurrentPage,
     nextPage,
     prevPage,
-    resetPagination
+    resetPagination,
+    // 评论系统
+    getCommentsByAnswerId,
+    getRepliesByCommentId,
+    createComment,
+    deleteComment,
+    likeComment,
+    getCommentRating,
+    getCommentCount
   }
 })
